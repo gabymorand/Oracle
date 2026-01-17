@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: oracle-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-oracle_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-oracle_password}
+      POSTGRES_DB: ${POSTGRES_DB:-oracle_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-oracle_user}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: oracle-backend
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-oracle_user}:${POSTGRES_PASSWORD:-oracle_password}@postgres:5432/${POSTGRES_DB:-oracle_db}
+      RIOT_API_KEY: ${RIOT_API_KEY}
+      RIOT_API_REGION: ${RIOT_API_REGION:-euw1}
+      RIOT_API_CACHE_TTL: ${RIOT_API_CACHE_TTL:-3600}
+      ACCESS_CODE: ${ACCESS_CODE:-oracle2026}
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me}
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: oracle-frontend
+    environment:
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    command: npm run dev -- --host
+
+volumes:
+  postgres_data:
