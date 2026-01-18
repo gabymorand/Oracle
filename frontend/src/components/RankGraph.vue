@@ -48,7 +48,7 @@ const props = defineProps<{
 interface RankHistoryEntry {
   id: number
   tier: string
-  division: string
+  division: string | null
   lp: number
   wins: number
   losses: number
@@ -78,9 +78,9 @@ const divisionValues: Record<string, number> = {
   I: 3
 }
 
-function rankToValue(tier: string, division: string, lp: number): number {
+function rankToValue(tier: string, division: string | null, lp: number): number {
   const base = tierValues[tier] * 400
-  if (['MASTER', 'GRANDMASTER', 'CHALLENGER'].includes(tier)) {
+  if (['MASTER', 'GRANDMASTER', 'CHALLENGER'].includes(tier) || !division) {
     return base + lp
   }
   return base + divisionValues[division] * 100 + lp
