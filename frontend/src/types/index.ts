@@ -14,7 +14,11 @@ export interface RiotAccount {
   summoner_name: string
   tag_line: string
   is_main: boolean
+  rank_tier?: string
+  rank_division?: string
+  lp?: number
   created_at: string
+  updated_at?: string
 }
 
 export interface PlayerNote {
@@ -60,3 +64,11 @@ export interface LaneStats {
 }
 
 export type UserRole = 'coach' | 'player' | 'head_coach'
+
+export interface Coach {
+  id: number
+  name: string
+  role?: string
+  created_at: string
+  updated_at: string
+}

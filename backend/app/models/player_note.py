@@ -22,6 +22,7 @@ class PlayerNote(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     player_id = Column(Integer, ForeignKey("players.id"), nullable=False)
+    coach_id = Column(Integer, ForeignKey("coaches.id"), nullable=True)  # Nouveau champ
     author_role = Column(String, nullable=False)
     note_type = Column(String, nullable=False)
     content = Column(Text, nullable=False)
@@ -29,3 +30,4 @@ class PlayerNote(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     player = relationship("Player", back_populates="notes")
+    coach = relationship("Coach")  # Nouvelle relation

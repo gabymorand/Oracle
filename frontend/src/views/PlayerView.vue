@@ -1,15 +1,6 @@
 <template>
   <div class="min-h-screen bg-gray-900">
-    <nav class="bg-gray-800 border-b border-gray-700">
-      <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-        <button @click="router.push('/dashboard')" class="text-blue-400 hover:underline">
-          ← Back to Dashboard
-        </button>
-        <button @click="handleLogout" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded transition">
-          Logout
-        </button>
-      </div>
-    </nav>
+    <AppNavbar :show-back-button="true" />
 
     <div class="max-w-7xl mx-auto px-4 py-8">
       <div v-if="loading" class="text-center py-12">
@@ -18,10 +9,80 @@
 
       <div v-else-if="player">
         <div class="bg-gray-800 rounded-lg p-6 mb-6">
-          <div class="flex justify-between items-start">
+          <div class="flex justify-between items-start mb-4">
             <div>
               <h1 class="text-3xl font-bold mb-2">{{ player.summoner_name }}</h1>
               <span class="bg-blue-600 px-3 py-1 rounded uppercase text-sm">{{ player.role }}</span>
+            </div>
+          </div>
+
+          <div class="mt-4">
+            <h3 class="text-lg font-semibold mb-2">Riot Accounts</h3>
+            <div class="space-y-2">
+              <div
+                v-for="account in player.riot_accounts"
+                :key="account.id"
+                class="flex justify-between items-center bg-gray-700 p-3 rounded"
+              >
+                <div>
+                  <span class="font-medium">{{ account.summoner_name }}#{{ account.tag_line }}</span>
+                  <span v-if="account.is_main" class="ml-2 text-xs bg-yellow-600 px-2 py-1 rounded">Main</span>
+                </div>
+                <button
+                  v-if="authStore.userRole !== 'player'"
+                  @click="refreshStats(account.id)"
+                  class="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-sm transition"
+                >
+                  Refresh Stats
+                </button>
+              </div>
+            </div>
+
+            <div v-if="authStore.userRole !== 'player' && !showAddAccount" class="mt-3">
+              <button
+                @click="showAddAccount = true"
+                class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded text-sm transition"
+              >
+                + Add Riot Account
+              </button>
+            </div>
+
+            <div v-if="showAddAccount" class="mt-3 bg-gray-700 p-4 rounded">
+              <h4 class="font-semibold mb-2">Add Riot Account</h4>
+              <div class="grid grid-cols-2 gap-2">
+                <input
+                  v-model="newAccount.summoner_name"
+                  type="text"
+                  placeholder="Summoner Name"
+                  class="px-3 py-2 bg-gray-600 rounded border border-gray-500"
+                />
+                <input
+                  v-model="newAccount.tag_line"
+                  type="text"
+                  placeholder="Tag (e.g., EUW)"
+                  class="px-3 py-2 bg-gray-600 rounded border border-gray-500"
+                />
+              </div>
+              <div class="flex items-center gap-2 mt-2">
+                <label class="flex items-center">
+                  <input v-model="newAccount.is_main" type="checkbox" class="mr-2" />
+                  <span class="text-sm">Main Account</span>
+                </label>
+              </div>
+              <div class="flex gap-2 mt-3">
+                <button
+                  @click="addRiotAccount"
+                  class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded text-sm transition"
+                >
+                  Add
+                </button>
+                <button
+                  @click="showAddAccount = false"
+                  class="bg-gray-600 hover:bg-gray-500 px-4 py-2 rounded text-sm transition"
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -108,8 +169,9 @@
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { playersApi, statsApi, playerNotesApi } from '@/api'
+import { playersApi, statsApi, playerNotesApi, riotAccountsApi } from '@/api'
 import type { Player, PlayerStats, PlayerNote } from '@/types'
+import AppNavbar from '@/components/AppNavbar.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -121,6 +183,12 @@ const notes = ref<PlayerNote[]>([])
 const loading = ref(true)
 const newNote = ref('')
 const noteType = ref<'note' | 'objective'>('note')
+const showAddAccount = ref(false)
+const newAccount = ref({
+  summoner_name: '',
+  tag_line: '',
+  is_main: false,
+})
 
 async function loadPlayerData() {
   const playerId = Number(route.params.id)
@@ -162,9 +230,30 @@ async function addNote() {
   }
 }
 
-function handleLogout() {
-  authStore.logout()
-  router.push('/')
+async function addRiotAccount() {
+  if (!newAccount.value.summoner_name || !newAccount.value.tag_line || !player.value) return
+
+  try {
+    await riotAccountsApi.create(player.value.id, newAccount.value)
+    const playerRes = await playersApi.get(player.value.id)
+    player.value = playerRes.data
+    showAddAccount.value = false
+    newAccount.value = { summoner_name: '', tag_line: '', is_main: false }
+  } catch (error) {
+    console.error('Failed to add Riot account:', error)
+  }
+}
+
+async function refreshStats(riotAccountId: number) {
+  try {
+    await statsApi.refreshStats(riotAccountId)
+    if (player.value) {
+      const statsRes = await statsApi.getPlayerStats(player.value.id)
+      stats.value = statsRes.data
+    }
+  } catch (error) {
+    console.error('Failed to refresh stats:', error)
+  }
 }
 
 onMounted(() => {

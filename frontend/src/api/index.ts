@@ -1,9 +1,19 @@
-import type { Player, RiotAccount, PlayerNote, Draft, PlayerStats, LaneStats } from '@/types'
+import type { Player, RiotAccount, PlayerNote, Draft, PlayerStats, LaneStats, Coach } from '@/types'
 import apiClient from './client'
 
 export const authApi = {
   validateCode: (code: string, role: string) =>
     apiClient.post('/api/v1/auth/validate-code', { code, role }),
+}
+
+export const coachesApi = {
+  list: () => apiClient.get<Coach[]>('/api/v1/coaches'),
+  get: (id: number) => apiClient.get<Coach>(`/api/v1/coaches/${id}`),
+  create: (data: { name: string; role?: string }) =>
+    apiClient.post<Coach>('/api/v1/coaches', data),
+  update: (id: number, data: Partial<Coach>) =>
+    apiClient.patch<Coach>(`/api/v1/coaches/${id}`, data),
+  delete: (id: number) => apiClient.delete(`/api/v1/coaches/${id}`),
 }
 
 export const playersApi = {

@@ -10,6 +10,16 @@ const router = createRouter({
       component: () => import('@/views/LoginView.vue'),
     },
     {
+      path: '/select-role',
+      name: 'select-role',
+      component: () => import('@/views/RoleSelectionView.vue'),
+    },
+    {
+      path: '/select-coach',
+      name: 'select-coach',
+      component: () => import('@/views/CoachSelectionView.vue'),
+    },
+    {
       path: '/dashboard',
       name: 'dashboard',
       component: () => import('@/views/DashboardView.vue'),
@@ -27,6 +37,17 @@ const router = createRouter({
       component: () => import('@/views/DraftsView.vue'),
       meta: { requiresAuth: true },
     },
+    {
+      path: '/sponsors',
+      name: 'sponsors',
+      component: () => import('@/views/SponsorsView.vue'),
+    },
+    {
+      path: '/coaches',
+      name: 'coaches',
+      component: () => import('@/views/CoachesManagementView.vue'),
+      meta: { requiresAuth: true },
+    },
   ],
 })
 
@@ -36,7 +57,7 @@ router.beforeEach((to, _from, next) => {
 
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
     next('/')
-  } else if (to.name === 'login' && authStore.isAuthenticated) {
+  } else if ((to.name === 'login' || to.name === 'select-role') && authStore.isAuthenticated) {
     next('/dashboard')
   } else {
     next()

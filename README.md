@@ -53,11 +53,7 @@ docker-compose up --build
 
 ### 3. Initialize Database
 
-```bash
-# Run Alembic migrations (in backend container)
-docker-compose exec backend alembic revision --autogenerate -m "Initial migration"
-docker-compose exec backend alembic upgrade head
-```
+Database migrations are automatically applied on startup. The initial migration is already created.
 
 ### 4. Access the Application
 

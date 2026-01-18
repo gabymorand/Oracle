@@ -15,7 +15,12 @@ class RiotAccount(Base):
     summoner_name = Column(String, nullable=False)
     tag_line = Column(String, nullable=False)
     is_main = Column(Boolean, default=False)
+    # Rank tracking
+    rank_tier = Column(String, nullable=True)  # e.g., "DIAMOND"
+    rank_division = Column(String, nullable=True)  # e.g., "II"
+    lp = Column(Integer, nullable=True)  # League Points
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     player = relationship("Player", back_populates="riot_accounts")
     games = relationship("Game", back_populates="riot_account", cascade="all, delete")

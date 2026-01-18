@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routers import auth, drafts, player_notes, players, riot_accounts, stats
+from app.routers import auth, coaches, drafts, player_notes, players, riot_accounts, stats
 
 app = FastAPI(
     title="Oracle API",
@@ -21,6 +21,7 @@ app.add_middleware(
 # Include routers
 app.include_router(auth.router)
 app.include_router(players.router)
+app.include_router(coaches.router)
 app.include_router(riot_accounts.router)
 app.include_router(player_notes.router)
 app.include_router(drafts.router)

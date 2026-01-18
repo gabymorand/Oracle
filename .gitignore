@@ -70,3 +70,5 @@ htmlcov/
 frontend/dist/
 frontend/.vite/
 frontend/.temp/
+.env.example
+.env.example

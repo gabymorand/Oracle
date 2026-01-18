@@ -1,15 +1,6 @@
 <template>
   <div class="min-h-screen bg-gray-900">
-    <nav class="bg-gray-800 border-b border-gray-700">
-      <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-        <button @click="router.push('/dashboard')" class="text-blue-400 hover:underline">
-          ← Back to Dashboard
-        </button>
-        <button @click="handleLogout" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded transition">
-          Logout
-        </button>
-      </div>
-    </nav>
+    <AppNavbar :show-back-button="true" />
 
     <div class="max-w-7xl mx-auto px-4 py-8">
       <div class="mb-6 flex justify-between items-center">
@@ -114,6 +105,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { draftsApi } from '@/api'
 import type { Draft } from '@/types'
+import AppNavbar from '@/components/AppNavbar.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -159,11 +151,6 @@ async function addDraft() {
   } catch (error) {
     console.error('Failed to add draft:', error)
   }
-}
-
-function handleLogout() {
-  authStore.logout()
-  router.push('/')
 }
 
 onMounted(() => {
