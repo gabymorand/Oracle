@@ -17,12 +17,6 @@ export default defineConfig({
       'localhost',
       '.railway.app',
     ],
-    proxy: {
-      '/riot.txt': {
-        target: 'http://backend:8000',
-        changeOrigin: true,
-      },
-    },
     hmr: {
       clientPort: 443,
     },
