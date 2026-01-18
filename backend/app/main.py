@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 
@@ -18,11 +18,25 @@ app.add_middleware(
         "http://localhost:3000",  # Alternative local port
         "https://oraclesc.up.railway.app",  # Production frontend
         "https://oracle-services.up.railway.app",  # Production backend (for docs)
+        "*",  # Allow all for Railway compatibility
     ],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
+
+# Additional CORS headers middleware for Railway compatibility
+@app.middleware("http")
+async def add_cors_headers(request: Request, call_next):
+    response = await call_next(request)
+
+    # Add CORS headers to all responses
+    response.headers["Access-Control-Allow-Origin"] = "https://oraclesc.up.railway.app"
+    response.headers["Access-Control-Allow-Credentials"] = "true"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "*"
+
+    return response
 
 # Include routers
 app.include_router(auth.router)
