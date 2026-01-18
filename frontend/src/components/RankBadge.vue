@@ -4,7 +4,7 @@
       v-if="rankImage"
       :src="rankImage"
       :alt="`${tier} ${division}`"
-      class="w-12 h-12 object-contain"
+      class="w-16 h-16 object-contain"
     />
     <span class="font-semibold" :class="textColor">
       {{ displayText }}
