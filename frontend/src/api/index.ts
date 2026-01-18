@@ -17,7 +17,7 @@ export const coachesApi = {
 }
 
 export const playersApi = {
-  list: () => apiClient.get<Player[]>('/api/v1/players'),
+  getPlayers: () => apiClient.get<Player[]>('/api/v1/players'),
   get: (id: number) => apiClient.get<Player>(`/api/v1/players/${id}`),
   create: (data: { summoner_name: string; role: string }) =>
     apiClient.post<Player>('/api/v1/players', data),

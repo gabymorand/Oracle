@@ -60,6 +60,12 @@ async function selectRole(role: UserRole) {
     return
   }
 
+  // If player role, redirect to player selection
+  if (role === 'player') {
+    router.push('/select-player')
+    return
+  }
+
   // If coach role, redirect to coach selection
   if (role === 'coach') {
     router.push('/select-coach')

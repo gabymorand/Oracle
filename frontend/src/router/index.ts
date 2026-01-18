@@ -20,6 +20,11 @@ const router = createRouter({
       component: () => import('@/views/CoachSelectionView.vue'),
     },
     {
+      path: '/select-player',
+      name: 'select-player',
+      component: () => import('@/views/PlayerSelectionView.vue'),
+    },
+    {
       path: '/dashboard',
       name: 'dashboard',
       component: () => import('@/views/DashboardView.vue'),
