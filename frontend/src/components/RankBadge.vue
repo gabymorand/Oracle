@@ -4,7 +4,7 @@
       v-if="rankImage"
       :src="rankImage"
       :alt="`${tier} ${division}`"
-      class="w-48 h-48 object-contain"
+      class="w-8 h-8 object-contain flex-shrink-0"
     />
     <span class="font-semibold" :class="textColor">
       {{ displayText }}
@@ -26,16 +26,16 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const rankImages: Record<string, string> = {
-  'IRON': 'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/images/ranked-emblem/emblem-iron.png',
-  'BRONZE': 'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/images/ranked-emblem/emblem-bronze.png',
-  'SILVER': 'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/images/ranked-emblem/emblem-silver.png',
-  'GOLD': 'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/images/ranked-emblem/emblem-gold.png',
-  'PLATINUM': 'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/images/ranked-emblem/emblem-platinum.png',
-  'EMERALD': 'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/images/ranked-emblem/emblem-emerald.png',
-  'DIAMOND': 'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/images/ranked-emblem/emblem-diamond.png',
-  'MASTER': 'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/images/ranked-emblem/emblem-master.png',
-  'GRANDMASTER': 'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/images/ranked-emblem/emblem-grandmaster.png',
-  'CHALLENGER': 'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/images/ranked-emblem/emblem-challenger.png'
+  'IRON': 'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-shared-components/global/default/ranked-mini-regalia/ranked-mini-regalia-iron.png',
+  'BRONZE': 'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-shared-components/global/default/ranked-mini-regalia/ranked-mini-regalia-bronze.png',
+  'SILVER': 'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-shared-components/global/default/ranked-mini-regalia/ranked-mini-regalia-silver.png',
+  'GOLD': 'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-shared-components/global/default/ranked-mini-regalia/ranked-mini-regalia-gold.png',
+  'PLATINUM': 'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-shared-components/global/default/ranked-mini-regalia/ranked-mini-regalia-platinum.png',
+  'EMERALD': 'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-shared-components/global/default/ranked-mini-regalia/ranked-mini-regalia-emerald.png',
+  'DIAMOND': 'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-shared-components/global/default/ranked-mini-regalia/ranked-mini-regalia-diamond.png',
+  'MASTER': 'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-shared-components/global/default/ranked-mini-regalia/ranked-mini-regalia-master.png',
+  'GRANDMASTER': 'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-shared-components/global/default/ranked-mini-regalia/ranked-mini-regalia-grandmaster.png',
+  'CHALLENGER': 'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-shared-components/global/default/ranked-mini-regalia/ranked-mini-regalia-challenger.png'
 }
 
 const rankImage = computed(() => {
