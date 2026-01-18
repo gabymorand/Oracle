@@ -197,7 +197,7 @@ class RiotAPIClient:
             db.rollback()
             raise  # Re-raise the exception so frontend can handle it
 
-    async def fetch_and_store_matches(self, db: Session, riot_account):
+    async def fetch_and_store_matches(self, db: Session, riot_account, max_matches: int = 20):
         """Fetch recent matches and store in database"""
         from datetime import datetime
 
@@ -205,7 +205,7 @@ class RiotAPIClient:
         SEASON_26_START = datetime(2026, 1, 9, 0, 0, 0)
 
         try:
-            match_ids = await self.get_match_ids_by_puuid(riot_account.puuid, start=0, count=100)
+            match_ids = await self.get_match_ids_by_puuid(riot_account.puuid, start=0, count=max_matches)
 
             for match_id in match_ids:
                 # Check if match already exists

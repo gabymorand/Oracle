@@ -98,7 +98,7 @@ async def refresh_player_stats(db: Session, riot_account_id: int):
         print("Rank updated successfully")
         # Then fetch matches
         print("Fetching and storing matches...")
-        await riot_client.fetch_and_store_matches(db, riot_account)
+        await riot_client.fetch_and_store_matches(db, riot_account, max_matches=20)
         print("Matches fetched and stored successfully")
     except ValueError as e:
         error_msg = str(e)

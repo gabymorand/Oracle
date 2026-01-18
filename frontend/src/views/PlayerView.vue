@@ -468,7 +468,9 @@ async function loadPlayerData() {
       stats.value = null
     }
 
-    // Auto-refresh stats for accounts without rank info
+    // Auto-refresh stats for accounts without rank info (disabled for performance)
+    // TODO: Add manual "Refresh All" button instead of auto-refresh
+    /*
     if (player.value?.riot_accounts) {
       const accountsToRefresh = player.value.riot_accounts.filter(account => !account.rank_tier)
       if (accountsToRefresh.length > 0) {
@@ -485,6 +487,7 @@ async function loadPlayerData() {
         }
       }
     }
+    */
   } catch (error) {
     console.error('Failed to load player data:', error)
   } finally {
