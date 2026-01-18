@@ -1,18 +1,20 @@
-from datetime import date, datetime
+from datetime import date as date_type
+from datetime import datetime
 from enum import Enum
+from typing import Optional
 
 from pydantic import BaseModel
 
 
 # Legacy Draft schemas (backwards compatibility)
 class DraftBase(BaseModel):
-    date: date
+    date: date_type
     opponent_name: str
     blue_side: bool
     picks: list[int]  # Champion IDs
     bans: list[int]  # Champion IDs
-    result: str | None = None
-    notes: str | None = None
+    result: Optional[str] = None
+    notes: Optional[str] = None
 
 
 class DraftCreate(DraftBase):
@@ -41,11 +43,11 @@ class DraftGameBase(BaseModel):
     opponent_bans: list[int] = []
     our_picks: list[int] = []
     opponent_picks: list[int] = []
-    pick_order: list[dict] | None = None
-    result: str | None = None
-    import_source: str | None = None
-    import_url: str | None = None
-    notes: str | None = None
+    pick_order: Optional[list[dict]] = None
+    result: Optional[str] = None
+    import_source: Optional[str] = None
+    import_url: Optional[str] = None
+    notes: Optional[str] = None
 
 
 class DraftGameCreate(DraftGameBase):
@@ -62,10 +64,10 @@ class DraftGameResponse(DraftGameBase):
 
 
 class DraftSeriesBase(BaseModel):
-    date: date
+    date: date_type
     opponent_name: str
     format: str = "bo1"
-    notes: str | None = None
+    notes: Optional[str] = None
 
 
 class DraftSeriesCreate(DraftSeriesBase):
@@ -73,20 +75,20 @@ class DraftSeriesCreate(DraftSeriesBase):
 
 
 class DraftSeriesUpdate(BaseModel):
-    date: date | None = None
-    opponent_name: str | None = None
-    format: str | None = None
-    notes: str | None = None
-    result: str | None = None
+    date: Optional[date_type] = None
+    opponent_name: Optional[str] = None
+    format: Optional[str] = None
+    notes: Optional[str] = None
+    result: Optional[str] = None
 
 
 class DraftSeriesResponse(DraftSeriesBase):
     id: int
     our_score: int
     opponent_score: int
-    result: str | None
+    result: Optional[str]
     created_at: datetime
-    updated_at: datetime | None
+    updated_at: Optional[datetime]
     games: list[DraftGameResponse] = []
 
     class Config:
@@ -98,7 +100,7 @@ class DraftSeriesListResponse(DraftSeriesBase):
     id: int
     our_score: int
     opponent_score: int
-    result: str | None
+    result: Optional[str]
     created_at: datetime
     games_count: int = 0
 
@@ -108,11 +110,11 @@ class DraftSeriesListResponse(DraftSeriesBase):
 
 # Import from URL/Image
 class DraftImportRequest(BaseModel):
-    url: str | None = None
-    image_base64: str | None = None
+    url: Optional[str] = None
+    image_base64: Optional[str] = None
 
 
 class DraftImportResponse(BaseModel):
     success: bool
     message: str
-    data: DraftGameBase | None = None
+    data: Optional[DraftGameBase] = None

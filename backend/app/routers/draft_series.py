@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -27,7 +28,7 @@ class DraftImportRequest(BaseModel):
 class DraftImportResponse(BaseModel):
     success: bool
     message: str
-    data: dict | None = None
+    data: Optional[dict] = None
 
 
 @router.post("/import", response_model=DraftImportResponse)

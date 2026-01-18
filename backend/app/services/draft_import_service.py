@@ -7,6 +7,7 @@ Supported sources:
 """
 
 import re
+from typing import Optional
 from urllib.parse import parse_qs, urlparse
 
 import httpx
@@ -57,13 +58,13 @@ def normalize_champion_name(name: str) -> str:
     return re.sub(r"[^a-z]", "", name.lower())
 
 
-def get_champion_id(name: str) -> int | None:
+def get_champion_id(name: str) -> Optional[int]:
     """Get champion ID from name"""
     normalized = normalize_champion_name(name)
     return CHAMPION_NAME_TO_ID.get(normalized)
 
 
-async def parse_draftlol_url(url: str) -> dict | None:
+async def parse_draftlol_url(url: str) -> Optional[dict]:
     """
     Parse a draftlol.dawe.gg URL to extract draft data.
 
@@ -111,7 +112,7 @@ async def parse_draftlol_url(url: str) -> dict | None:
         return None
 
 
-def parse_draftlol_response(data: dict) -> dict | None:
+def parse_draftlol_response(data: dict) -> Optional[dict]:
     """Parse the response from draftlol API"""
     try:
         # The structure depends on the actual API response
@@ -150,7 +151,7 @@ def parse_draftlol_response(data: dict) -> dict | None:
         return None
 
 
-def parse_draft_string(draft_string: str) -> dict | None:
+def parse_draft_string(draft_string: str) -> Optional[list]:
     """
     Parse a draft string that might be in various formats:
     - Comma-separated champion names
