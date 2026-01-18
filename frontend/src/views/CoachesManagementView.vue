@@ -35,7 +35,7 @@
                 class="w-full px-3 py-2 bg-gray-700 rounded border border-gray-600 focus:border-blue-500 focus:outline-none"
               >
                 <option :value="null">None (Head Coach)</option>
-                <option :value="Assistant">Assistant Coach</option>
+                <option value="Assistant">Assistant Coach</option>
                 <option value="top">Top</option>
                 <option value="jungle">Jungle</option>
                 <option value="mid">Mid</option>
@@ -190,7 +190,7 @@ async function deleteCoach() {
 
   try {
     await coachesApi.delete(coachToDelete.value.id)
-    coaches.value = coaches.value.filter((c) => c.id !== coachToDelete.value!.id)
+    coaches.value = coaches.value.filter((c: Coach) => c.id !== coachToDelete.value!.id)
     coachToDelete.value = null
   } catch (error) {
     console.error('Failed to delete coach:', error)
