@@ -31,16 +31,24 @@
                   </div>
                   <div v-if="account.rank_tier" class="text-sm mt-1 space-y-1">
                     <div class="flex items-center gap-3">
-                      <span class="font-semibold text-blue-400">
-                        {{ account.rank_tier }} {{ account.rank_division }} - {{ account.lp }} LP
-                      </span>
+                      <RankBadge
+                        :tier="account.rank_tier"
+                        :division="account.rank_division"
+                        :lp="account.lp"
+                      />
                       <span v-if="account.wins && account.losses" class="text-xs text-gray-500">
                         {{ account.wins }}W {{ account.losses }}L
                         ({{ Math.round((account.wins / (account.wins + account.losses)) * 100) }}%)
                       </span>
                     </div>
-                    <div v-if="account.peak_tier" class="text-xs text-yellow-400">
-                      🏆 Peak: {{ account.peak_tier }} {{ account.peak_division }} - {{ account.peak_lp }} LP
+                    <div v-if="account.peak_tier" class="text-xs text-yellow-400 flex items-center gap-2">
+                      🏆 Peak:
+                      <RankBadge
+                        :tier="account.peak_tier"
+                        :division="account.peak_division"
+                        :lp="account.peak_lp"
+                        :show-lp="false"
+                      />
                     </div>
                   </div>
                   <div v-else class="text-sm mt-1 flex items-center gap-2">
@@ -396,6 +404,7 @@ import { useAuthStore } from '@/stores/auth'
 import { playersApi, statsApi, playerNotesApi, riotAccountsApi } from '@/api'
 import type { Player, PlayerStats, PlayerNote } from '@/types'
 import AppNavbar from '@/components/AppNavbar.vue'
+import RankBadge from '@/components/RankBadge.vue'
 import RankGraph from '@/components/RankGraph.vue'
 import StatsGraph from '@/components/StatsGraph.vue'
 import ChampionStats from '@/components/ChampionStats.vue'

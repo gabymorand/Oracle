@@ -170,13 +170,17 @@ class RiotAPIClient:
                     riot_account.peak_lp = rank_info["lp"]
 
                 # Store in history if rank changed
+                # For MASTER/GRANDMASTER/CHALLENGER, division is None, so handle that
+                current_division = rank_info["rank"] if rank_info["tier"] not in ["MASTER", "GRANDMASTER", "CHALLENGER"] else None
+                old_division_check = old_division if old_tier not in ["MASTER", "GRANDMASTER", "CHALLENGER"] else None
+
                 if (old_tier != rank_info["tier"] or
-                    old_division != rank_info["rank"] or
+                    old_division_check != current_division or
                     old_lp != rank_info["lp"]):
                     history_entry = RankHistory(
                         riot_account_id=riot_account.id,
                         tier=rank_info["tier"],
-                        division=rank_info["rank"],
+                        division=current_division,  # Store None for master+ tiers
                         lp=rank_info["lp"],
                         wins=rank_info["wins"],
                         losses=rank_info["losses"],
