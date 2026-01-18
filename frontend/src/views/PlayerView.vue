@@ -84,12 +84,21 @@
               </div>
             </div>
 
-            <div v-if="authStore.userRole !== 'player' && !showAddAccount" class="mt-3">
+            <div v-if="authStore.userRole !== 'player' && !showAddAccount" class="mt-3 flex gap-2">
               <button
                 @click="showAddAccount = true"
                 class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded text-sm transition"
               >
                 + Add Riot Account
+              </button>
+              <button
+                v-if="player?.riot_accounts?.some(account => !account.rank_tier)"
+                @click="refreshAllUnrankedAccounts"
+                :disabled="isRefreshingAll"
+                class="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:cursor-not-allowed px-4 py-2 rounded text-sm transition flex items-center gap-2"
+              >
+                <span v-if="isRefreshingAll" class="animate-spin">⟳</span>
+                {{ isRefreshingAll ? 'Refreshing All...' : 'Refresh All Unranked' }}
               </button>
             </div>
 
@@ -439,6 +448,7 @@ const manualRankData = ref({
 
 // Loading states
 const refreshingAccounts = ref<Set<number>>(new Set())
+const isRefreshingAll = ref(false)
 
 const tabs = [
   { id: 'overview', label: 'Overview' },
@@ -599,6 +609,31 @@ async function refreshStats(riotAccountId: number, showSuccessAlert = true) {
     }
   } finally {
     refreshingAccounts.value.delete(riotAccountId)
+  }
+}
+
+async function refreshAllUnrankedAccounts() {
+  if (!player.value?.riot_accounts) return
+
+  const accountsToRefresh = player.value.riot_accounts.filter(account => !account.rank_tier)
+  if (accountsToRefresh.length === 0) return
+
+  isRefreshingAll.value = true
+  try {
+    console.log(`Manually refreshing stats for ${accountsToRefresh.length} unranked account(s)`)
+    await Promise.all(
+      accountsToRefresh.map(account => refreshStats(account.id, false))
+    )
+    // Reload player data after refresh
+    const playerId = Number(route.params.id)
+    const updatedPlayerRes = await playersApi.get(playerId)
+    player.value = updatedPlayerRes.data
+    alert(`Successfully refreshed ${accountsToRefresh.length} account(s)!`)
+  } catch (error) {
+    console.warn('Manual refresh failed:', error)
+    alert('Some accounts failed to refresh. Check the console for details.')
+  } finally {
+    isRefreshingAll.value = false
   }
 }
 
