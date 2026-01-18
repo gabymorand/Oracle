@@ -82,30 +82,37 @@ class RiotAPIClient:
         """Fetch and update rank information for a riot account"""
         from app.models.rank_history import RankHistory
 
+        print(f"Starting rank update for {riot_account.summoner_name}#{riot_account.tag_line}")
+        
         try:
             # Get summoner_id if not already stored
             if not riot_account.summoner_id:
+                print(f"Fetching summoner_id for {riot_account.summoner_name} (PUUID: {riot_account.puuid})")
                 summoner_data = await self.get_summoner_by_puuid(riot_account.puuid)
-                if "id" not in summoner_data:
-                    print(f"Warning: Summoner data incomplete for {riot_account.summoner_name}, skipping rank update")
-                    return
+                print(f"Summoner data received: {summoner_data}")
+                
+                # Check if we got a valid response with required fields
+                if not isinstance(summoner_data, dict) or "id" not in summoner_data:
+                    raise ValueError(f"Invalid summoner data received from Riot API. Response: {summoner_data}. This usually indicates an invalid API key.")
+                
                 riot_account.summoner_id = summoner_data["id"]
                 db.commit()
+                print(f"Got summoner_id: {riot_account.summoner_id}")
 
             # Fetch rank info
+            print(f"Fetching rank info for summoner_id: {riot_account.summoner_id}")
             rank_info = await self.get_rank_info(riot_account.summoner_id)
+            print(f"Rank info result: {rank_info}")
 
             if rank_info:
-                old_tier = riot_account.rank_tier
-                old_division = riot_account.rank_division
-                old_lp = riot_account.lp
-
                 # Update current rank
                 riot_account.rank_tier = rank_info["tier"]
                 riot_account.rank_division = rank_info["rank"]
                 riot_account.lp = rank_info["lp"]
                 riot_account.wins = rank_info["wins"]
                 riot_account.losses = rank_info["losses"]
+
+                print(f"Updated rank: {riot_account.rank_tier} {riot_account.rank_division} {riot_account.lp} LP")
 
                 # Update peak rank if this is higher
                 def rank_value(tier, division, lp):
@@ -156,7 +163,7 @@ class RiotAPIClient:
         except Exception as e:
             print(f"Failed to update rank: {str(e)}")
             db.rollback()
-            # Don't raise - rank update is not critical
+            raise  # Re-raise the exception so frontend can handle it
 
     async def fetch_and_store_matches(self, db: Session, riot_account):
         """Fetch recent matches and store in database"""

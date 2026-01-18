@@ -29,6 +29,8 @@ export const playersApi = {
 export const riotAccountsApi = {
   create: (playerId: number, data: { summoner_name: string; tag_line: string; is_main?: boolean }) =>
     apiClient.post<RiotAccount>(`/api/v1/players/${playerId}/riot-accounts`, data),
+  updateRank: (accountId: number, data: any) =>
+    apiClient.patch<RiotAccount>(`/api/v1/riot-accounts/${accountId}/rank`, data),
   delete: (id: number) => apiClient.delete(`/api/v1/riot-accounts/${id}`),
 }
 

@@ -28,10 +28,10 @@ async def get_lane_stats(lane: str, db: Session = Depends(get_db)):
     return stats
 
 
-@router.post("/refresh/{riot_account_id}", status_code=202)
+@router.post("/refresh/{riot_account_id}", status_code=200)
 async def refresh_stats(riot_account_id: int, db: Session = Depends(get_db)):
     await stats_service.refresh_player_stats(db, riot_account_id)
-    return {"message": "Stats refresh initiated"}
+    return {"message": "Stats refreshed successfully"}
 
 
 @router.get("/team/highlights", response_model=TeamHighlights)

@@ -89,14 +89,35 @@ async def refresh_player_stats(db: Session, riot_account_id: int):
     if not riot_account:
         raise HTTPException(status_code=404, detail="Riot account not found")
 
+    print(f"Starting stats refresh for account {riot_account.summoner_name}#{riot_account.tag_line}")
     riot_client = RiotAPIClient()
     try:
         # Update rank first
+        print("Fetching and updating rank...")
         await riot_client.fetch_and_update_rank(db, riot_account)
+        print("Rank updated successfully")
         # Then fetch matches
+        print("Fetching and storing matches...")
         await riot_client.fetch_and_store_matches(db, riot_account)
+        print("Matches fetched and stored successfully")
+    except ValueError as e:
+        error_msg = str(e)
+        print(f"ValueError during stats refresh: {error_msg}")
+        if "Invalid summoner data received from Riot API" in error_msg:
+            raise HTTPException(
+                status_code=503,
+                detail="❌ Riot API Error: Invalid or incomplete response from Riot API. This usually indicates an invalid API key. Please check your RIOT_API_KEY in the .env file.",
+            )
+        elif "Unable to get summoner ID" in error_msg:
+            raise HTTPException(
+                status_code=503,
+                detail="Unable to retrieve summoner information from Riot API. This may indicate an invalid API key or the account may not exist.",
+            )
+        else:
+            raise HTTPException(status_code=500, detail=f"Data validation error: {error_msg}")
     except Exception as e:
         error_msg = str(e)
+        print(f"Error during stats refresh: {error_msg}")
         if "401" in error_msg or "Unauthorized" in error_msg:
             raise HTTPException(
                 status_code=503,

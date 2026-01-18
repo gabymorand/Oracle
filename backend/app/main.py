@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse
+from fastapi.responses import FileResponse, RedirectResponse
 
 from app.routers import auth, coaches, drafts, games, player_notes, players, riot_accounts, stats
 
@@ -39,3 +39,9 @@ async def root():
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}
+
+
+@app.get("/riot.txt")
+async def riot_verification():
+    """Serve riot.txt for Riot Games verification"""
+    return FileResponse("riot.txt", media_type="text/plain")

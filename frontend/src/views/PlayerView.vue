@@ -43,14 +43,27 @@
                       🏆 Peak: {{ account.peak_tier }} {{ account.peak_division }} - {{ account.peak_lp }} LP
                     </div>
                   </div>
-                  <div v-else class="text-sm text-gray-500 mt-1">Unranked</div>
+                  <div v-else class="text-sm mt-1 flex items-center gap-2">
+                    <span class="text-gray-500">Unranked</span>
+                    <span class="text-xs text-orange-400">(API unavailable - click Refresh Stats)</span>
+                  </div>
                 </div>
                 <div v-if="authStore.userRole !== 'player'" class="flex gap-2">
                   <button
                     @click="refreshStats(account.id)"
-                    class="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-sm transition"
+                    :disabled="refreshingAccounts.has(account.id)"
+                    class="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:cursor-not-allowed px-3 py-1 rounded text-sm transition flex items-center gap-2"
                   >
-                    Refresh Stats
+                    <span v-if="refreshingAccounts.has(account.id)" class="animate-spin">⟳</span>
+                    {{ refreshingAccounts.has(account.id) ? 'Refreshing...' : 'Refresh Stats' }}
+                  </button>
+                  <button
+                    v-if="!account.rank_tier"
+                    @click="openManualRankDialog(account)"
+                    class="bg-orange-600 hover:bg-orange-700 px-3 py-1 rounded text-sm transition"
+                    title="Enter rank manually when API is unavailable"
+                  >
+                    Manual Entry
                   </button>
                   <button
                     @click="deleteRiotAccount(account.id)"
@@ -233,6 +246,134 @@
       </div>
     </div>
   </div>
+
+  <!-- Manual Rank Entry Dialog -->
+  <div v-if="showManualRankDialog" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-gray-800 p-6 rounded-lg w-full max-w-md">
+      <h3 class="text-lg font-semibold mb-4">Manual Rank Entry</h3>
+      <p class="text-sm text-gray-400 mb-4">
+        Enter rank information for {{ manualRankAccount?.summoner_name }}#{{ manualRankAccount?.tag_line }}
+      </p>
+
+      <div class="space-y-4">
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium mb-1">Tier</label>
+            <select v-model="manualRankData.rank_tier" class="w-full bg-gray-700 rounded px-3 py-2">
+              <option value="">Select Tier</option>
+              <option value="IRON">Iron</option>
+              <option value="BRONZE">Bronze</option>
+              <option value="SILVER">Silver</option>
+              <option value="GOLD">Gold</option>
+              <option value="PLATINUM">Platinum</option>
+              <option value="EMERALD">Emerald</option>
+              <option value="DIAMOND">Diamond</option>
+              <option value="MASTER">Master</option>
+              <option value="GRANDMASTER">Grandmaster</option>
+              <option value="CHALLENGER">Challenger</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Division</label>
+            <select v-model="manualRankData.rank_division" class="w-full bg-gray-700 rounded px-3 py-2">
+              <option value="">Select Division</option>
+              <option value="IV">IV</option>
+              <option value="III">III</option>
+              <option value="II">II</option>
+              <option value="I">I</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium mb-1">LP</label>
+          <input
+            v-model.number="manualRankData.lp"
+            type="number"
+            min="0"
+            max="100"
+            class="w-full bg-gray-700 rounded px-3 py-2"
+          />
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium mb-1">Wins</label>
+            <input
+              v-model.number="manualRankData.wins"
+              type="number"
+              min="0"
+              class="w-full bg-gray-700 rounded px-3 py-2"
+            />
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Losses</label>
+            <input
+              v-model.number="manualRankData.losses"
+              type="number"
+              min="0"
+              class="w-full bg-gray-700 rounded px-3 py-2"
+            />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium mb-1">Peak Tier</label>
+            <select v-model="manualRankData.peak_tier" class="w-full bg-gray-700 rounded px-3 py-2">
+              <option value="">Select Tier</option>
+              <option value="IRON">Iron</option>
+              <option value="BRONZE">Bronze</option>
+              <option value="SILVER">Silver</option>
+              <option value="GOLD">Gold</option>
+              <option value="PLATINUM">Platinum</option>
+              <option value="EMERALD">Emerald</option>
+              <option value="DIAMOND">Diamond</option>
+              <option value="MASTER">Master</option>
+              <option value="GRANDMASTER">Grandmaster</option>
+              <option value="CHALLENGER">Challenger</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Peak Division</label>
+            <select v-model="manualRankData.peak_division" class="w-full bg-gray-700 rounded px-3 py-2">
+              <option value="">Select Division</option>
+              <option value="IV">IV</option>
+              <option value="III">III</option>
+              <option value="II">II</option>
+              <option value="I">I</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium mb-1">Peak LP</label>
+          <input
+            v-model.number="manualRankData.peak_lp"
+            type="number"
+            min="0"
+            max="100"
+            class="w-full bg-gray-700 rounded px-3 py-2"
+          />
+        </div>
+      </div>
+
+      <div class="flex gap-2 mt-6">
+        <button
+          @click="saveManualRank"
+          class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded transition flex-1"
+        >
+          Save Rank
+        </button>
+        <button
+          @click="closeManualRankDialog"
+          class="bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded transition"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -258,6 +399,24 @@ const newNote = ref('')
 const noteType = ref<'note' | 'objective'>('note')
 const showAddAccount = ref(false)
 const activeTab = ref('overview')
+
+// Manual rank entry
+const showManualRankDialog = ref(false)
+const manualRankAccount = ref<any>(null)
+const manualRankData = ref({
+  rank_tier: '',
+  rank_division: '',
+  lp: 0,
+  wins: 0,
+  losses: 0,
+  peak_tier: '',
+  peak_division: '',
+  peak_lp: 0
+})
+
+// Loading states
+const refreshingAccounts = ref<Set<number>>(new Set())
+
 const tabs = [
   { id: 'overview', label: 'Overview' },
   { id: 'champions', label: 'Champions' },
@@ -284,6 +443,24 @@ async function loadPlayerData() {
       stats.value = statsRes.data
     } catch {
       stats.value = null
+    }
+
+    // Auto-refresh stats for accounts without rank info
+    if (player.value?.riot_accounts) {
+      const accountsToRefresh = player.value.riot_accounts.filter(account => !account.rank_tier)
+      if (accountsToRefresh.length > 0) {
+        console.log(`Auto-refreshing stats for ${accountsToRefresh.length} account(s) without rank info`)
+        try {
+          await Promise.all(
+            accountsToRefresh.map(account => refreshStats(account.id, false))
+          )
+          // Reload player data after refresh
+          const updatedPlayerRes = await playersApi.get(playerId)
+          player.value = updatedPlayerRes.data
+        } catch (error) {
+          console.warn('Auto-refresh failed, but continuing with existing data:', error)
+        }
+      }
     }
   } catch (error) {
     console.error('Failed to load player data:', error)
@@ -344,18 +521,77 @@ async function deleteRiotAccount(accountId: number) {
   }
 }
 
-async function refreshStats(riotAccountId: number) {
+async function refreshStats(riotAccountId: number, showSuccessAlert = true) {
+  refreshingAccounts.value.add(riotAccountId)
   try {
     await statsApi.refreshStats(riotAccountId)
     if (player.value) {
       const statsRes = await statsApi.getPlayerStats(player.value.id)
       stats.value = statsRes.data
     }
-    alert('Stats refreshed successfully!')
+    if (showSuccessAlert) {
+      alert('Stats refreshed successfully!')
+    }
   } catch (error: any) {
     console.error('Failed to refresh stats:', error)
     const errorMsg = error.response?.data?.detail || 'Failed to refresh stats. The Riot API may be unavailable or the account may not be valid.'
-    alert(`Stats refresh failed:\n\n${errorMsg}\n\nNote: If this account was added while the Riot API was unavailable, you may need to delete it and re-add it when the API is working.`)
+    
+    // Check for specific API errors
+    let displayMsg = errorMsg
+    if (errorMsg.includes('401') || errorMsg.includes('Unauthorized')) {
+      displayMsg = '❌ Riot API Error: The API key is invalid or expired.\n\nPlease contact an administrator to configure a valid Riot API key.'
+    } else if (errorMsg.includes('403') || errorMsg.includes('Forbidden')) {
+      displayMsg = '❌ Riot API Error: Access forbidden. Please check API key permissions.'
+    } else if (errorMsg.includes('404')) {
+      displayMsg = '❌ Account not found: The summoner name/tag may be incorrect.'
+    }
+    
+    if (showSuccessAlert) {
+      const accountName = player.value?.riot_accounts.find(a => a.id === riotAccountId)?.summoner_name || 'Unknown'
+      alert(`${displayMsg}\n\nAccount: ${accountName}`)
+    } else {
+      console.warn(`Stats refresh failed for account ${riotAccountId}:`, errorMsg)
+    }
+  } finally {
+    refreshingAccounts.value.delete(riotAccountId)
+  }
+}
+
+function openManualRankDialog(account: any) {
+  manualRankAccount.value = account
+  manualRankData.value = {
+    rank_tier: account.rank_tier || '',
+    rank_division: account.rank_division || '',
+    lp: account.lp || 0,
+    wins: account.wins || 0,
+    losses: account.losses || 0,
+    peak_tier: account.peak_tier || '',
+    peak_division: account.peak_division || '',
+    peak_lp: account.peak_lp || 0
+  }
+  showManualRankDialog.value = true
+}
+
+function closeManualRankDialog() {
+  showManualRankDialog.value = false
+  manualRankAccount.value = null
+}
+
+async function saveManualRank() {
+  if (!manualRankAccount.value || !player.value) return
+
+  try {
+    await riotAccountsApi.updateRank(manualRankAccount.value.id, manualRankData.value)
+    
+    // Reload player data to reflect changes
+    const playerRes = await playersApi.get(player.value.id)
+    player.value = playerRes.data
+    
+    alert('Rank information saved successfully!')
+    closeManualRankDialog()
+  } catch (error) {
+    console.error('Failed to save manual rank:', error)
+    alert('Failed to save rank information.')
   }
 }
 
