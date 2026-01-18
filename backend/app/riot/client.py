@@ -93,11 +93,13 @@ class RiotAPIClient:
                 
                 # Check if we got a valid response with required fields
                 if not isinstance(summoner_data, dict) or "id" not in summoner_data:
-                    raise ValueError(f"Invalid summoner data received from Riot API. Response: {summoner_data}. This usually indicates an invalid API key.")
+                    raise ValueError(f"Unable to retrieve summoner ID from Riot API. This may indicate API key restrictions or the summoner data is not publicly available. Please use the 'Manual Entry' button to add rank information manually, and optionally enter the Summoner ID if known.")
                 
                 riot_account.summoner_id = summoner_data["id"]
                 db.commit()
                 print(f"Got summoner_id: {riot_account.summoner_id}")
+            else:
+                print(f"Using existing summoner_id: {riot_account.summoner_id}")
 
             # Fetch rank info
             print(f"Fetching rank info for summoner_id: {riot_account.summoner_id}")

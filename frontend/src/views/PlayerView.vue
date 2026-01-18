@@ -255,6 +255,19 @@
         Enter rank information for {{ manualRankAccount?.summoner_name }}#{{ manualRankAccount?.tag_line }}
       </p>
 
+      <div class="mb-4 p-3 bg-blue-900/20 border border-blue-500/30 rounded">
+        <p class="text-sm text-blue-300 mb-2">💡 Pro tip: If you know the Summoner ID, enter it below to enable automatic stats refresh later.</p>
+        <div>
+          <label class="block text-sm font-medium mb-1">Summoner ID (Optional)</label>
+          <input
+            v-model="manualRankData.summoner_id"
+            type="text"
+            placeholder="e.g., abc123def456"
+            class="w-full bg-gray-700 rounded px-3 py-2"
+          />
+        </div>
+      </div>
+
       <div class="space-y-4">
         <div class="grid grid-cols-2 gap-4">
           <div>
@@ -411,7 +424,8 @@ const manualRankData = ref({
   losses: 0,
   peak_tier: '',
   peak_division: '',
-  peak_lp: 0
+  peak_lp: 0,
+  summoner_id: '' // Optional summoner ID for future API calls
 })
 
 // Loading states
@@ -487,10 +501,29 @@ async function addNote() {
 }
 
 async function addRiotAccount() {
-  if (!newAccount.value.summoner_name || !newAccount.value.tag_line || !player.value) return
+  if (!player.value) return
+
+  let summonerName = newAccount.value.summoner_name
+  let tagLine = newAccount.value.tag_line
+
+  // Auto-parse if user entered "name#tag" format
+  if (summonerName && summonerName.includes('#') && !tagLine) {
+    const parts = summonerName.split('#')
+    summonerName = parts[0]
+    tagLine = parts[1]
+  }
+
+  if (!summonerName || !tagLine) {
+    alert('Please enter both summoner name and tag line (or use format: name#tag)')
+    return
+  }
 
   try {
-    await riotAccountsApi.create(player.value.id, newAccount.value)
+    await riotAccountsApi.create(player.value.id, {
+      summoner_name: summonerName,
+      tag_line: tagLine,
+      is_main: newAccount.value.is_main
+    })
     const playerRes = await playersApi.get(player.value.id)
     player.value = playerRes.data
     showAddAccount.value = false

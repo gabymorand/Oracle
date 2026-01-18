@@ -43,6 +43,8 @@ async def update_riot_account_rank(
         account.peak_division = rank_data["peak_division"] or None
     if "peak_lp" in rank_data:
         account.peak_lp = rank_data["peak_lp"]
+    if "summoner_id" in rank_data and rank_data["summoner_id"]:
+        account.summoner_id = rank_data["summoner_id"]
 
     account.updated_at = datetime.utcnow()
     db.commit()

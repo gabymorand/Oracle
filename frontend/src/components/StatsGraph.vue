@@ -48,6 +48,7 @@ import {
   Filler
 } from 'chart.js'
 import axios from 'axios'
+import { apiClient } from '@/api/client'
 
 ChartJS.register(
   CategoryScale,
@@ -216,8 +217,7 @@ const chartOptions = computed(() => ({
 async function loadGames() {
   try {
     loading.value = true
-    const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
-    const response = await axios.get(`${apiUrl}/api/v1/stats/games/${props.riotAccountId}?limit=50`)
+    const response = await apiClient.get(`/api/v1/stats/games/${props.riotAccountId}?limit=50`)
     games.value = response.data
   } catch (error) {
     console.error('Failed to load games:', error)

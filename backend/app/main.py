@@ -13,7 +13,12 @@ app = FastAPI(
 # CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, specify exact origins
+    allow_origins=[
+        "http://localhost:5173",  # Local development
+        "http://localhost:3000",  # Alternative local port
+        "https://oraclesc.up.railway.app",  # Production frontend
+        "https://oracle-services.up.railway.app",  # Production backend (for docs)
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

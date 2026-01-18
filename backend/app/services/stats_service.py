@@ -108,10 +108,10 @@ async def refresh_player_stats(db: Session, riot_account_id: int):
                 status_code=503,
                 detail="❌ Riot API Error: Invalid or incomplete response from Riot API. This usually indicates an invalid API key. Please check your RIOT_API_KEY in the .env file.",
             )
-        elif "Unable to get summoner ID" in error_msg:
+        if "Unable to retrieve summoner ID from Riot API" in error_msg:
             raise HTTPException(
                 status_code=503,
-                detail="Unable to retrieve summoner information from Riot API. This may indicate an invalid API key or the account may not exist.",
+                detail="❌ Riot API Error: Unable to retrieve summoner information. This may indicate API key restrictions or the summoner data is not publicly available. Please use the 'Manual Entry' button to add rank information manually, and optionally enter the Summoner ID if known to enable automatic refresh.",
             )
         else:
             raise HTTPException(status_code=500, detail=f"Data validation error: {error_msg}")

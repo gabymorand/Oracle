@@ -66,6 +66,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
+import { apiClient } from '@/api/client'
 
 const props = defineProps<{
   riotAccountId: number
@@ -93,8 +94,7 @@ const loading = ref(true)
 async function loadChampionStats() {
   try {
     loading.value = true
-    const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
-    const response = await axios.get(`${apiUrl}/api/v1/stats/champions/${props.riotAccountId}`)
+    const response = await apiClient.get(`/api/v1/stats/champions/${props.riotAccountId}`)
     champions.value = response.data
   } catch (error) {
     console.error('Failed to load champion stats:', error)
