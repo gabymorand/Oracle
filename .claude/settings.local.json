@@ -3,7 +3,12 @@
     "allow": [
       "Bash(docker exec:*)",
       "Bash(docker logs:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(git commit:*)",
+      "Bash(tasklist:*)",
+      "Bash(findstr:*)",
+      "Bash(wmic process where \"name like ''%git%''\" get processid,commandline)",
+      "Bash(ls:*)"
     ]
   }
 }
