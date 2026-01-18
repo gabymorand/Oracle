@@ -18,7 +18,7 @@ export default defineConfig({
       '.railway.app',
     ],
     hmr: {
-      clientPort: 443,
+      // clientPort: 443,
     },
   },
   preview: {

@@ -41,7 +41,7 @@
               <router-link
                 v-for="player in players"
                 :key="player.id"
-                :to="`/player/${player.id}`"
+                :to="`/players/${player.id}`"
                 class="flex items-center gap-3 px-4 py-2 hover:bg-gray-600 transition"
                 @click="showPlayersDropdown = false"
               >

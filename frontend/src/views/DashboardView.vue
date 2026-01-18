@@ -168,7 +168,7 @@ const newPlayer = ref({
 
 async function loadPlayers() {
   try {
-    const response = await playersApi.list()
+    const response = await playersApi.getPlayers()
     players.value = response.data
   } catch (error) {
     console.error('Failed to load players:', error)
