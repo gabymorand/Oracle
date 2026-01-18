@@ -69,9 +69,12 @@ class RiotAPIClient:
         # Find Solo/Duo queue rank
         for entry in data:
             if entry["queueType"] == "RANKED_SOLO_5x5":
+                tier = entry["tier"]
+                # For MASTER/GRANDMASTER/CHALLENGER, rank/division is meaningless - set to None
+                rank = None if tier in ["MASTER", "GRANDMASTER", "CHALLENGER"] else entry.get("rank")
                 return {
-                    "tier": entry["tier"],  # IRON, BRONZE, SILVER, GOLD, PLATINUM, EMERALD, DIAMOND, MASTER, GRANDMASTER, CHALLENGER
-                    "rank": entry["rank"],  # I, II, III, IV
+                    "tier": tier,  # IRON, BRONZE, SILVER, GOLD, PLATINUM, EMERALD, DIAMOND, MASTER, GRANDMASTER, CHALLENGER
+                    "rank": rank,  # I, II, III, IV (None for Master+)
                     "lp": entry["leaguePoints"],
                     "wins": entry["wins"],
                     "losses": entry["losses"],
@@ -85,9 +88,12 @@ class RiotAPIClient:
         # Find Solo/Duo queue rank
         for entry in data:
             if entry["queueType"] == "RANKED_SOLO_5x5":
+                tier = entry["tier"]
+                # For MASTER/GRANDMASTER/CHALLENGER, rank/division is meaningless - set to None
+                rank = None if tier in ["MASTER", "GRANDMASTER", "CHALLENGER"] else entry.get("rank")
                 return {
-                    "tier": entry["tier"],
-                    "rank": entry["rank"],
+                    "tier": tier,
+                    "rank": rank,
                     "lp": entry["leaguePoints"],
                     "wins": entry["wins"],
                     "losses": entry["losses"],

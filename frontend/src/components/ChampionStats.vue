@@ -29,11 +29,14 @@
             class="border-b border-gray-700 hover:bg-gray-700 transition"
           >
             <td class="py-3">
-              <div class="flex items-center gap-2">
-                <div class="w-10 h-10 bg-gray-600 rounded flex items-center justify-center text-xs">
-                  {{ champ.champion_id }}
-                </div>
-                <span class="font-semibold">Champion {{ champ.champion_id }}</span>
+              <div class="flex items-center gap-3">
+                <img
+                  :src="getChampionIcon(champ.champion_id)"
+                  :alt="getChampName(champ.champion_id)"
+                  class="w-10 h-10 rounded"
+                  @error="handleImageError"
+                />
+                <span class="font-semibold">{{ getChampName(champ.champion_id) }}</span>
               </div>
             </td>
             <td class="text-center">{{ champ.games_played }}</td>
@@ -65,8 +68,8 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import axios from 'axios'
 import { apiClient } from '@/api/client'
+import { loadChampionData, getChampionName, getChampionIconUrl } from '@/utils/champions'
 
 const props = defineProps<{
   riotAccountId: number
@@ -91,9 +94,28 @@ interface ChampionStat {
 const champions = ref<ChampionStat[]>([])
 const loading = ref(true)
 
+function getChampName(championId: number): string {
+  return getChampionName(championId)
+}
+
+function getChampionIcon(championId: number): string {
+  return getChampionIconUrl(championId)
+}
+
+function handleImageError(event: Event) {
+  const img = event.target as HTMLImageElement
+  // Fallback to community dragon if DDragon fails
+  if (!img.src.includes('communitydragon')) {
+    const champId = img.alt
+    img.src = `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/-1.png`
+  }
+}
+
 async function loadChampionStats() {
   try {
     loading.value = true
+    // Load champion data first
+    await loadChampionData()
     const response = await apiClient.get(`/api/v1/stats/champions/${props.riotAccountId}`)
     champions.value = response.data
   } catch (error) {

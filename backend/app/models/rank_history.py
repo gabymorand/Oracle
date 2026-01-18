@@ -12,7 +12,7 @@ class RankHistory(Base):
     id = Column(Integer, primary_key=True, index=True)
     riot_account_id = Column(Integer, ForeignKey("riot_accounts.id"), nullable=False)
     tier = Column(String, nullable=False)  # IRON, BRONZE, SILVER, etc.
-    division = Column(String, nullable=False)  # I, II, III, IV
+    division = Column(String, nullable=True)  # I, II, III, IV (null for Master/Grandmaster/Challenger)
     lp = Column(Integer, nullable=False)  # League Points
     wins = Column(Integer, nullable=False)
     losses = Column(Integer, nullable=False)
