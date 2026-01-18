@@ -106,9 +106,30 @@ class RiotAPIClient:
         old_lp = riot_account.lp
         
         try:
-            # Try to get rank directly by PUUID (preferred method - works with newer API keys)
-            print(f"Fetching rank info directly by PUUID: {riot_account.puuid}")
-            rank_info = await self.get_rank_info_by_puuid(riot_account.puuid)
+            # Check if PUUID looks like a fallback (not a real Riot PUUID)
+            # Real PUUIDs are 78 chars and contain specific patterns
+            puuid = riot_account.puuid
+            
+            # If PUUID doesn't look valid or API returns error, try to fetch real PUUID
+            try:
+                print(f"Fetching rank info directly by PUUID: {puuid}")
+                rank_info = await self.get_rank_info_by_puuid(puuid)
+            except ValueError as e:
+                if "400" in str(e) or "decrypting" in str(e).lower():
+                    # PUUID is invalid - fetch the real one
+                    print(f"PUUID appears invalid, fetching real PUUID for {riot_account.summoner_name}#{riot_account.tag_line}")
+                    try:
+                        real_puuid = await self.get_puuid_by_riot_id(riot_account.summoner_name, riot_account.tag_line)
+                        print(f"Got real PUUID: {real_puuid}")
+                        riot_account.puuid = real_puuid
+                        db.commit()
+                        puuid = real_puuid
+                        rank_info = await self.get_rank_info_by_puuid(puuid)
+                    except Exception as e2:
+                        raise ValueError(f"Failed to fetch real PUUID: {str(e2)}")
+                else:
+                    raise
+            
             print(f"Rank info result: {rank_info}")
 
             if rank_info:
