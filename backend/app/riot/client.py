@@ -63,7 +63,7 @@ class RiotAPIClient:
         return await self._request(url)
 
     async def get_rank_info(self, summoner_id: str) -> dict:
-        """Get ranked info for a summoner"""
+        """Get ranked info for a summoner by summoner_id (legacy method)"""
         url = f"{self.base_url_region}/lol/league/v4/entries/by-summoner/{summoner_id}"
         data = await self._request(url)
         # Find Solo/Duo queue rank
@@ -78,32 +78,37 @@ class RiotAPIClient:
                 }
         return None
 
+    async def get_rank_info_by_puuid(self, puuid: str) -> dict:
+        """Get ranked info directly by PUUID (preferred method with new API keys)"""
+        url = f"{self.base_url_region}/lol/league/v4/entries/by-puuid/{puuid}"
+        data = await self._request(url)
+        # Find Solo/Duo queue rank
+        for entry in data:
+            if entry["queueType"] == "RANKED_SOLO_5x5":
+                return {
+                    "tier": entry["tier"],
+                    "rank": entry["rank"],
+                    "lp": entry["leaguePoints"],
+                    "wins": entry["wins"],
+                    "losses": entry["losses"],
+                }
+        return None
+
     async def fetch_and_update_rank(self, db: Session, riot_account):
         """Fetch and update rank information for a riot account"""
         from app.models.rank_history import RankHistory
 
         print(f"Starting rank update for {riot_account.summoner_name}#{riot_account.tag_line}")
         
+        # Store old values for history comparison
+        old_tier = riot_account.rank_tier
+        old_division = riot_account.rank_division
+        old_lp = riot_account.lp
+        
         try:
-            # Get summoner_id if not already stored
-            if not riot_account.summoner_id:
-                print(f"Fetching summoner_id for {riot_account.summoner_name} (PUUID: {riot_account.puuid})")
-                summoner_data = await self.get_summoner_by_puuid(riot_account.puuid)
-                print(f"Summoner data received: {summoner_data}")
-                
-                # Check if we got a valid response with required fields
-                if not isinstance(summoner_data, dict) or "id" not in summoner_data:
-                    raise ValueError(f"Unable to retrieve summoner ID from Riot API. This may indicate API key restrictions or the summoner data is not publicly available. Please use the 'Manual Entry' button to add rank information manually, and optionally enter the Summoner ID if known.")
-                
-                riot_account.summoner_id = summoner_data["id"]
-                db.commit()
-                print(f"Got summoner_id: {riot_account.summoner_id}")
-            else:
-                print(f"Using existing summoner_id: {riot_account.summoner_id}")
-
-            # Fetch rank info
-            print(f"Fetching rank info for summoner_id: {riot_account.summoner_id}")
-            rank_info = await self.get_rank_info(riot_account.summoner_id)
+            # Try to get rank directly by PUUID (preferred method - works with newer API keys)
+            print(f"Fetching rank info directly by PUUID: {riot_account.puuid}")
+            rank_info = await self.get_rank_info_by_puuid(riot_account.puuid)
             print(f"Rank info result: {rank_info}")
 
             if rank_info:
