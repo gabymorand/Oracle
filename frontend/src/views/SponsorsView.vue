@@ -2,8 +2,19 @@
   <div class="min-h-screen bg-gradient-to-br from-blue-900 via-gray-900 to-purple-900">
     <div class="bg-gray-800/50 border-b border-gray-700 backdrop-blur">
       <div class="max-w-7xl mx-auto px-4 py-6">
-        <div class="flex justify-center">
-          <AppLogo size="lg" />
+        <div class="flex justify-between items-center">
+          <div class="flex-1"></div>
+          <div class="flex justify-center flex-1">
+            <AppLogo size="lg" />
+          </div>
+          <div class="flex-1 flex justify-end">
+            <router-link
+              to="/"
+              class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded transition text-sm font-medium"
+            >
+              Staff Login
+            </router-link>
+          </div>
         </div>
       </div>
     </div>
@@ -133,8 +144,9 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { playersApi, draftsApi } from '@/api'
+import { playersApi, statsApi, gamesApi } from '@/api'
 import AppLogo from '@/components/AppLogo.vue'
+import type { Player, Game } from '@/types'
 
 const loading = ref(true)
 
@@ -157,38 +169,115 @@ const hallOfFame = ref({
 
 async function loadStats() {
   try {
-    const [playersRes, draftsRes] = await Promise.all([
+    const [playersRes, highlightsRes] = await Promise.all([
       playersApi.list(),
-      draftsApi.list(),
+      statsApi.getTeamHighlights(),
     ])
 
-    playerRankings.value = playersRes.data.map((p: any) => ({
-      ...p,
-      rank: 'Diamond II', // Mock data - à remplacer par vraies données
-      lp: Math.floor(Math.random() * 100),
-    }))
+    const players: Player[] = playersRes.data
+    const highlights = highlightsRes.data
 
-    const drafts = draftsRes.data
-    const wins = drafts.filter((d: any) => d.result === 'win').length
+    // Update team stats with real data
     teamStats.value = {
-      totalGames: drafts.length,
-      winrate: drafts.length > 0 ? Math.round((wins / drafts.length) * 100) : 0,
-      competitiveWR: 65, // Mock data - à calculer depuis les games "competitive"
+      totalGames: highlights.total_games,
+      winrate: highlights.winrate,
+      competitiveWR: highlights.competitive_winrate,
     }
 
-    recentMatches.value = drafts.slice(0, 5).map((d: any) => ({
-      id: d.id,
-      opponent: d.opponent_name,
-      date: d.date,
-      result: d.result || 'pending',
+    // Get player rankings with rank info from their main accounts
+    playerRankings.value = players
+      .map((p) => {
+        const mainAccount = p.riot_accounts.find((acc) => acc.is_main) || p.riot_accounts[0]
+        return {
+          ...p,
+          rank: mainAccount?.rank_tier
+            ? `${mainAccount.rank_tier} ${mainAccount.rank_division || ''}`
+            : 'Unranked',
+          lp: mainAccount?.lp || 0,
+        }
+      })
+      .sort((a, b) => (b.lp || 0) - (a.lp || 0))
+
+    // Recent matches from team highlights
+    recentMatches.value = highlights.recent_matches.slice(0, 5).map((match) => ({
+      id: match.id,
+      opponent: 'Ranked Match', // Generic since we don't track opponent for soloq
+      date: new Date(match.game_date).toLocaleDateString(),
+      result: match.stats.win ? 'win' : 'loss',
     }))
 
-    // Mock Hall of Fame - à remplacer par vraies stats
+    // Hall of Fame - pentakills
+    const pentakills = await gamesApi.getPentakills()
+    const pentakillsByPlayer = new Map<number, number>()
+
+    for (const game of pentakills.data) {
+      const player = players.find((p) =>
+        p.riot_accounts.some((acc) => acc.id === game.riot_account_id)
+      )
+      if (player) {
+        pentakillsByPlayer.set(player.id, (pentakillsByPlayer.get(player.id) || 0) + 1)
+      }
+    }
+
+    // Get player with most pentakills
+    let maxPentakills = 0
+    let pentakillKing = '-'
+    pentakillsByPlayer.forEach((count, playerId) => {
+      if (count > maxPentakills) {
+        maxPentakills = count
+        const player = players.find((p) => p.id === playerId)
+        pentakillKing = player?.summoner_name || '-'
+      }
+    })
+
+    // Compute best stats from player stats
+    const playerStatsList = await Promise.all(
+      players.map(async (p) => {
+        try {
+          const statsRes = await statsApi.getPlayerStats(p.id)
+          return { player: p.summoner_name, stats: statsRes.data }
+        } catch {
+          return null
+        }
+      })
+    )
+
+    const validStats = playerStatsList.filter((s) => s !== null)
+
+    const bestKDA = validStats.reduce(
+      (best, current) =>
+        current!.stats.avg_kda > (best?.stats.avg_kda || 0) ? current : best,
+      validStats[0]
+    )
+
+    const bestCS = validStats.reduce(
+      (best, current) =>
+        current!.stats.avg_cs_per_min > (best?.stats.avg_cs_per_min || 0) ? current : best,
+      validStats[0]
+    )
+
+    const bestVision = validStats.reduce(
+      (best, current) =>
+        current!.stats.avg_vision_score_per_min > (best?.stats.avg_vision_score_per_min || 0)
+          ? current
+          : best,
+      validStats[0]
+    )
+
     hallOfFame.value = {
-      pentakills: { player: playersRes.data[0]?.summoner_name || '-', count: 3 },
-      highestKDA: { player: playersRes.data[1]?.summoner_name || '-', kda: 4.2 },
-      bestCS: { player: playersRes.data[2]?.summoner_name || '-', cs: 8.5 },
-      bestVision: { player: playersRes.data[3]?.summoner_name || '-', vision: 2.1 },
+      pentakills: { player: pentakillKing, count: maxPentakills },
+      highestKDA: {
+        player: bestKDA?.player || '-',
+        kda: bestKDA?.stats.avg_kda || 0,
+      },
+      bestCS: {
+        player: bestCS?.player || '-',
+        cs: bestCS?.stats.avg_cs_per_min || 0,
+      },
+      bestVision: {
+        player: bestVision?.player || '-',
+        vision: bestVision?.stats.avg_vision_score_per_min || 0,
+      },
     }
   } catch (error) {
     console.error('Failed to load stats:', error)

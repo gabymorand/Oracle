@@ -1,4 +1,4 @@
-import type { Player, RiotAccount, PlayerNote, Draft, PlayerStats, LaneStats, Coach } from '@/types'
+import type { Player, RiotAccount, PlayerNote, Draft, PlayerStats, LaneStats, Coach, TeamHighlights, Game } from '@/types'
 import apiClient from './client'
 
 export const authApi = {
@@ -53,4 +53,11 @@ export const statsApi = {
   getLaneStats: (lane: string) => apiClient.get<LaneStats>(`/api/v1/stats/lane/${lane}`),
   refreshStats: (riotAccountId: number) =>
     apiClient.post(`/api/v1/stats/refresh/${riotAccountId}`),
+  getTeamHighlights: () => apiClient.get<TeamHighlights>(`/api/v1/stats/team/highlights`),
+}
+
+export const gamesApi = {
+  getPentakills: () => apiClient.get<Game[]>('/api/v1/games/pentakills'),
+  updateGameTag: (gameId: number, data: { game_type?: string; is_pentakill?: boolean }) =>
+    apiClient.patch<Game>(`/api/v1/games/${gameId}/tag`, data),
 }

@@ -1,7 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 
-from app.routers import auth, coaches, drafts, player_notes, players, riot_accounts, stats
+from app.routers import auth, coaches, drafts, games, player_notes, players, riot_accounts, stats
 
 app = FastAPI(
     title="Oracle API",
@@ -25,7 +26,14 @@ app.include_router(coaches.router)
 app.include_router(riot_accounts.router)
 app.include_router(player_notes.router)
 app.include_router(drafts.router)
+app.include_router(games.router)
 app.include_router(stats.router)
+
+
+@app.get("/")
+async def root():
+    """Redirect root to API documentation"""
+    return RedirectResponse(url="/docs")
 
 
 @app.get("/health")

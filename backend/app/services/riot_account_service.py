@@ -9,10 +9,20 @@ from app.schemas.riot_account import RiotAccountCreate
 async def create_riot_account(db: Session, player_id: int, account: RiotAccountCreate) -> RiotAccount:
     # Fetch PUUID from Riot API
     riot_client = RiotAPIClient()
+    puuid = None
+
     try:
         puuid = await riot_client.get_puuid_by_riot_id(account.summoner_name, account.tag_line)
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Failed to fetch Riot account: {str(e)}")
+        # If Riot API fails, generate a fallback PUUID
+        # This allows adding accounts even if the API is down or key is invalid
+        import hashlib
+
+        fallback_string = f"{account.summoner_name}#{account.tag_line}#{player_id}"
+        puuid = hashlib.sha256(fallback_string.encode()).hexdigest()[:78]  # PUUID format
+        print(
+            f"Warning: Could not fetch PUUID from Riot API for {account.summoner_name}#{account.tag_line}, using fallback: {str(e)}"
+        )
 
     # Check if account already exists
     existing = db.query(RiotAccount).filter(RiotAccount.puuid == puuid).first()

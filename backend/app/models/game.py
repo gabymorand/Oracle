@@ -1,7 +1,7 @@
 from datetime import datetime
 from enum import Enum
 
-from sqlalchemy import JSON, Column, DateTime, ForeignKey, Integer, String
+from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 
 from app.database import Base
@@ -24,6 +24,7 @@ class Game(Base):
     stats = Column(JSON, nullable=False)  # kda, cs, vision, etc.
     game_duration = Column(Integer, nullable=False)  # seconds
     game_date = Column(DateTime, nullable=False)
+    is_pentakill = Column(Boolean, default=False, nullable=False)  # Pentakill tracker
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     riot_account = relationship("RiotAccount", back_populates="games")

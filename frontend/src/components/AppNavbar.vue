@@ -13,6 +13,12 @@
         </div>
       </div>
       <div class="flex items-center gap-4">
+        <router-link
+          to="/sponsors"
+          class="text-blue-400 hover:text-blue-300 text-sm transition"
+        >
+          Team Highlights
+        </router-link>
         <span class="text-gray-400 text-sm">{{ authStore.userRole }}</span>
         <button
           @click="handleLogout"

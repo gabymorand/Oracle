@@ -28,6 +28,15 @@
 
         <p v-if="error" class="text-red-400 text-sm text-center">{{ error }}</p>
       </form>
+
+      <div class="mt-6 pt-6 border-t border-gray-700 text-center">
+        <router-link
+          to="/sponsors"
+          class="text-sm text-blue-400 hover:text-blue-300 transition"
+        >
+          View Team Highlights →
+        </router-link>
+      </div>
     </div>
   </div>
 </template>

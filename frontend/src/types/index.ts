@@ -72,3 +72,38 @@ export interface Coach {
   created_at: string
   updated_at: string
 }
+
+export interface Game {
+  id: number
+  riot_account_id: number
+  match_id: string
+  game_type: string
+  champion_id: number
+  role: string
+  stats: {
+    kills: number
+    deaths: number
+    assists: number
+    cs: number
+    gold: number
+    vision_score: number
+    damage_dealt: number
+    win: boolean
+    [key: string]: any
+  }
+  game_duration: number
+  game_date: string
+  is_pentakill: boolean
+  created_at: string
+}
+
+export interface TeamHighlights {
+  total_games: number
+  total_wins: number
+  winrate: number
+  competitive_games: number
+  competitive_wins: number
+  competitive_winrate: number
+  total_pentakills: number
+  recent_matches: Game[]
+}

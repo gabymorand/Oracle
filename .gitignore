@@ -70,5 +70,6 @@ htmlcov/
 frontend/dist/
 frontend/.vite/
 frontend/.temp/
-.env.example
-.env.example
+
+# Ensure frontend .env is ignored
+frontend/.env

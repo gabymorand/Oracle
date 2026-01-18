@@ -3,8 +3,7 @@
     "**/__pycache__": true,
     "**/*.pyc": true,
     "**/.pytest_cache": true,
-    "**/node_modules": true,
-    "**/.env": true
+    "**/node_modules": true
   },
   "search.exclude": {
     "**/node_modules": true,
@@ -16,5 +15,8 @@
     "**/node_modules/**": true,
     "**/__pycache__/**": true,
     "**/dist/**": true
-  }
+  },
+  "python.terminal.activateEnvironment": true,
+  "python.envFile": "${workspaceFolder}/.env",
+  "python.terminal.useEnvFile": true
 }

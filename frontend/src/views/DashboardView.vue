@@ -84,16 +84,62 @@
         <div
           v-for="player in players"
           :key="player.id"
-          class="bg-gray-800 rounded-lg p-6 hover:bg-gray-750 transition cursor-pointer"
-          @click="router.push(`/players/${player.id}`)"
+          class="bg-gray-800 rounded-lg p-6 hover:bg-gray-750 transition relative"
         >
-          <div class="flex justify-between items-start mb-2">
-            <h3 class="text-xl font-semibold">{{ player.summoner_name }}</h3>
-            <span class="text-sm bg-blue-600 px-2 py-1 rounded uppercase">{{ player.role }}</span>
+          <div
+            class="cursor-pointer"
+            @click="router.push(`/players/${player.id}`)"
+          >
+            <div class="flex justify-between items-start mb-2">
+              <h3 class="text-xl font-semibold">{{ player.summoner_name }}</h3>
+              <span class="text-sm bg-blue-600 px-2 py-1 rounded uppercase">{{ player.role }}</span>
+            </div>
+            <p class="text-gray-400 text-sm">
+              {{ player.riot_accounts.length }} account(s)
+            </p>
           </div>
-          <p class="text-gray-400 text-sm">
-            {{ player.riot_accounts.length }} account(s)
+          <button
+            v-if="authStore.userRole !== 'player'"
+            @click.stop="confirmDeletePlayer(player)"
+            class="absolute top-2 right-2 text-red-400 hover:text-red-300 transition p-1"
+            title="Delete player"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Delete Player Confirmation Modal -->
+      <div
+        v-if="playerToDelete"
+        class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+        @click="playerToDelete = null"
+      >
+        <div
+          class="bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4"
+          @click.stop
+        >
+          <h3 class="text-xl font-bold mb-4">Delete Player</h3>
+          <p class="text-gray-300 mb-6">
+            Are you sure you want to delete <strong>{{ playerToDelete.summoner_name }}</strong>?
+            This will also delete all associated Riot accounts and stats. This action cannot be undone.
           </p>
+          <div class="flex gap-3 justify-end">
+            <button
+              @click="playerToDelete = null"
+              class="px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded transition"
+            >
+              Cancel
+            </button>
+            <button
+              @click="deletePlayer"
+              class="px-4 py-2 bg-red-600 hover:bg-red-700 rounded transition"
+            >
+              Delete
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -114,6 +160,7 @@ const authStore = useAuthStore()
 const players = ref<Player[]>([])
 const loading = ref(true)
 const showAddPlayer = ref(false)
+const playerToDelete = ref<Player | null>(null)
 const newPlayer = ref({
   summoner_name: '',
   role: 'top',
@@ -139,8 +186,26 @@ async function handleAddPlayer() {
     newPlayer.value = { summoner_name: '', role: 'top' }
   } catch (error) {
     console.error('Failed to add player:', error)
+    alert('Failed to add player. Please try again.')
   } finally {
     loading.value = false
+  }
+}
+
+function confirmDeletePlayer(player: Player) {
+  playerToDelete.value = player
+}
+
+async function deletePlayer() {
+  if (!playerToDelete.value) return
+
+  try {
+    await playersApi.delete(playerToDelete.value.id)
+    players.value = players.value.filter((p) => p.id !== playerToDelete.value!.id)
+    playerToDelete.value = null
+  } catch (error) {
+    console.error('Failed to delete player:', error)
+    alert('Failed to delete player. Please try again.')
   }
 }
 

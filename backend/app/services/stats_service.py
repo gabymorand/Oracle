@@ -4,7 +4,7 @@ from app.models.game import Game
 from app.models.player import Player
 from app.models.riot_account import RiotAccount
 from app.riot.client import RiotAPIClient
-from app.schemas.stats import LaneStats, PlayerStats
+from app.schemas.stats import GameStats, LaneStats, PlayerStats, TeamHighlights
 
 
 def get_player_stats(db: Session, player_id: int) -> PlayerStats | None:
@@ -83,9 +83,68 @@ def get_lane_stats(db: Session, lane: str) -> LaneStats | None:
 
 
 async def refresh_player_stats(db: Session, riot_account_id: int):
+    from fastapi import HTTPException
+
     riot_account = db.query(RiotAccount).filter(RiotAccount.id == riot_account_id).first()
     if not riot_account:
-        return
+        raise HTTPException(status_code=404, detail="Riot account not found")
 
     riot_client = RiotAPIClient()
-    await riot_client.fetch_and_store_matches(db, riot_account)
+    try:
+        # Update rank first
+        await riot_client.fetch_and_update_rank(db, riot_account)
+        # Then fetch matches
+        await riot_client.fetch_and_store_matches(db, riot_account)
+    except Exception as e:
+        error_msg = str(e)
+        if "401" in error_msg or "Unauthorized" in error_msg:
+            raise HTTPException(
+                status_code=503,
+                detail="Riot API is unavailable (401 Unauthorized). The API key may be invalid or expired.",
+            )
+        elif "403" in error_msg or "Forbidden" in error_msg:
+            raise HTTPException(
+                status_code=503,
+                detail="Riot API access forbidden (403). Please check API key permissions.",
+            )
+        elif "404" in error_msg:
+            raise HTTPException(
+                status_code=404,
+                detail="Account not found on Riot servers. This account may have been created with a fallback PUUID. Please delete and re-add the account when Riot API is available.",
+            )
+        else:
+            raise HTTPException(status_code=500, detail=f"Failed to fetch stats from Riot API: {error_msg}")
+
+
+def get_team_highlights(db: Session) -> TeamHighlights:
+    """Get team highlights for sponsors page"""
+    # Get all games
+    all_games = db.query(Game).all()
+    total_games = len(all_games)
+    total_wins = sum(1 for g in all_games if g.stats.get("win", False))
+    winrate = (total_wins / total_games * 100) if total_games > 0 else 0.0
+
+    # Get competitive games
+    comp_games = [g for g in all_games if g.game_type == "competitive"]
+    competitive_games = len(comp_games)
+    competitive_wins = sum(1 for g in comp_games if g.stats.get("win", False))
+    competitive_winrate = (competitive_wins / competitive_games * 100) if competitive_games > 0 else 0.0
+
+    # Get pentakills
+    total_pentakills = sum(1 for g in all_games if g.is_pentakill)
+
+    # Get recent matches (last 10)
+    recent_matches = (
+        db.query(Game).order_by(Game.game_date.desc()).limit(10).all()
+    )
+
+    return TeamHighlights(
+        total_games=total_games,
+        total_wins=total_wins,
+        winrate=round(winrate, 2),
+        competitive_games=competitive_games,
+        competitive_wins=competitive_wins,
+        competitive_winrate=round(competitive_winrate, 2),
+        total_pentakills=total_pentakills,
+        recent_matches=[GameStats.model_validate(g) for g in recent_matches],
+    )
