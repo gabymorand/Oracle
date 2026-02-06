@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.deps import TeamContext, get_current_team
 from app.schemas.calendar import (
     AvailabilityCreate,
     AvailabilityResponse,
@@ -27,24 +28,33 @@ async def list_events(
     year: int = Query(..., description="Year (e.g., 2026)"),
     month: int = Query(..., ge=1, le=12, description="Month (1-12)"),
     db: Session = Depends(get_db),
+    team_ctx: TeamContext = Depends(get_current_team),
 ):
     """Get all events for a specific month"""
-    return calendar_service.get_events_by_month(db, year, month)
+    return calendar_service.get_events_by_month(db, team_ctx.team_id, year, month)
 
 
 @router.get("/events/{event_id}", response_model=CalendarEventWithSeries)
-async def get_event(event_id: int, db: Session = Depends(get_db)):
+async def get_event(
+    event_id: int,
+    db: Session = Depends(get_db),
+    team_ctx: TeamContext = Depends(get_current_team),
+):
     """Get event details with linked draft series"""
-    event = calendar_service.get_event_with_series(db, event_id)
+    event = calendar_service.get_event_with_series(db, team_ctx.team_id, event_id)
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
     return event
 
 
 @router.post("/events", response_model=CalendarEventResponse, status_code=201)
-async def create_event(event: CalendarEventCreate, db: Session = Depends(get_db)):
+async def create_event(
+    event: CalendarEventCreate,
+    db: Session = Depends(get_db),
+    team_ctx: TeamContext = Depends(get_current_team),
+):
     """Create a new calendar event"""
-    return calendar_service.create_event(db, event)
+    return calendar_service.create_event(db, team_ctx.team_id, event)
 
 
 @router.patch("/events/{event_id}", response_model=CalendarEventResponse)
@@ -52,18 +62,23 @@ async def update_event(
     event_id: int,
     event_update: CalendarEventUpdate,
     db: Session = Depends(get_db),
+    team_ctx: TeamContext = Depends(get_current_team),
 ):
     """Update an event"""
-    event = calendar_service.update_event(db, event_id, event_update)
+    event = calendar_service.update_event(db, team_ctx.team_id, event_id, event_update)
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
     return event
 
 
 @router.delete("/events/{event_id}", status_code=204)
-async def delete_event(event_id: int, db: Session = Depends(get_db)):
+async def delete_event(
+    event_id: int,
+    db: Session = Depends(get_db),
+    team_ctx: TeamContext = Depends(get_current_team),
+):
     """Delete an event"""
-    success = calendar_service.delete_event(db, event_id)
+    success = calendar_service.delete_event(db, team_ctx.team_id, event_id)
     if not success:
         raise HTTPException(status_code=404, detail="Event not found")
 
@@ -75,9 +90,10 @@ async def delete_event(event_id: int, db: Session = Depends(get_db)):
 async def list_scrims(
     limit: int = Query(50, ge=1, le=200, description="Max number of scrims to return"),
     db: Session = Depends(get_db),
+    team_ctx: TeamContext = Depends(get_current_team),
 ):
     """Get all scrims with draft series info"""
-    return calendar_service.get_scrims(db, limit)
+    return calendar_service.get_scrims(db, team_ctx.team_id, limit)
 
 
 # --- Availabilities ---
@@ -87,9 +103,10 @@ async def list_scrims(
 async def get_day_availabilities(
     date: date_type = Query(..., description="Date (YYYY-MM-DD)"),
     db: Session = Depends(get_db),
+    team_ctx: TeamContext = Depends(get_current_team),
 ):
     """Get all players' availability for a specific date"""
-    return calendar_service.get_day_availabilities(db, date)
+    return calendar_service.get_day_availabilities(db, team_ctx.team_id, date)
 
 
 @router.get("/availabilities/month", response_model=list[DayAvailabilitySummary])
@@ -97,9 +114,10 @@ async def get_month_availabilities(
     year: int = Query(..., description="Year (e.g., 2026)"),
     month: int = Query(..., ge=1, le=12, description="Month (1-12)"),
     db: Session = Depends(get_db),
+    team_ctx: TeamContext = Depends(get_current_team),
 ):
     """Get all availabilities for a month (for calendar overview)"""
-    return calendar_service.get_month_availabilities(db, year, month)
+    return calendar_service.get_month_availabilities(db, team_ctx.team_id, year, month)
 
 
 @router.post(
@@ -109,9 +127,10 @@ async def set_player_availability(
     player_id: int,
     availability: AvailabilityCreate,
     db: Session = Depends(get_db),
+    team_ctx: TeamContext = Depends(get_current_team),
 ):
     """Set a player's availability for a specific date/slot"""
-    return calendar_service.set_player_availability(db, player_id, availability)
+    return calendar_service.set_player_availability(db, team_ctx.team_id, player_id, availability)
 
 
 @router.post("/availabilities/player/{player_id}/bulk", response_model=list[AvailabilityResponse])
@@ -119,15 +138,22 @@ async def set_player_availability_bulk(
     player_id: int,
     availabilities: list[AvailabilityCreate],
     db: Session = Depends(get_db),
+    team_ctx: TeamContext = Depends(get_current_team),
 ):
     """Set multiple availability slots at once"""
-    return calendar_service.set_player_availability_bulk(db, player_id, availabilities)
+    return calendar_service.set_player_availability_bulk(
+        db, team_ctx.team_id, player_id, availabilities
+    )
 
 
 @router.delete("/availabilities/{availability_id}", status_code=204)
-async def delete_availability(availability_id: int, db: Session = Depends(get_db)):
+async def delete_availability(
+    availability_id: int,
+    db: Session = Depends(get_db),
+    team_ctx: TeamContext = Depends(get_current_team),
+):
     """Delete an availability entry"""
-    success = calendar_service.delete_availability(db, availability_id)
+    success = calendar_service.delete_availability(db, team_ctx.team_id, availability_id)
     if not success:
         raise HTTPException(status_code=404, detail="Availability not found")
 
@@ -139,6 +165,7 @@ async def delete_availability(availability_id: int, db: Session = Depends(get_db
 async def get_day_detail(
     date: date_type = Query(..., description="Date (YYYY-MM-DD)"),
     db: Session = Depends(get_db),
+    team_ctx: TeamContext = Depends(get_current_team),
 ):
     """Get complete day detail: events + availabilities"""
-    return calendar_service.get_day_detail(db, date)
+    return calendar_service.get_day_detail(db, team_ctx.team_id, date)

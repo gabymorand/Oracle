@@ -20,7 +20,8 @@ class OpponentTeam(Base):
     __tablename__ = "opponent_teams"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, unique=True, index=True, nullable=False)
+    team_id = Column(Integer, ForeignKey("teams.id", ondelete="CASCADE"), nullable=False, index=True)
+    name = Column(String, index=True, nullable=False)
     contact_name = Column(String, nullable=True)
     contact_discord = Column(String, nullable=True)
     contact_email = Column(String, nullable=True)
@@ -29,8 +30,9 @@ class OpponentTeam(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+    team = relationship("Team", back_populates="opponent_teams")
     scrim_reviews = relationship("ScrimReview", back_populates="opponent_team", cascade="all, delete")
-    scouted_players = relationship("ScoutedPlayer", back_populates="team", cascade="all, delete")
+    scouted_players = relationship("ScoutedPlayer", back_populates="opponent_team", cascade="all, delete")
 
 
 class ScrimReview(Base):
@@ -64,7 +66,7 @@ class ScoutedPlayer(Base):
     id = Column(Integer, primary_key=True, index=True)
     summoner_name = Column(String, nullable=False, index=True)
     tag_line = Column(String, nullable=True)
-    team_id = Column(Integer, ForeignKey("opponent_teams.id", ondelete="SET NULL"), nullable=True)
+    opponent_team_id = Column(Integer, ForeignKey("opponent_teams.id", ondelete="SET NULL"), nullable=True)
     role = Column(String, nullable=True)  # top/jungle/mid/adc/support
     rating = Column(Integer, nullable=True)  # 1-5 stars
     mechanical_skill = Column(Integer, nullable=True)  # 1-5
@@ -77,4 +79,4 @@ class ScoutedPlayer(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    team = relationship("OpponentTeam", back_populates="scouted_players")
+    opponent_team = relationship("OpponentTeam", back_populates="scouted_players")

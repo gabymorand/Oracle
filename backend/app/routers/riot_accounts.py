@@ -3,9 +3,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models.riot_account import RiotAccount
+from app.deps import TeamContext, get_current_team
 from app.models.game import Game
+from app.models.player import Player
 from app.models.rank_history import RankHistory
+from app.models.riot_account import RiotAccount
 from app.schemas.riot_account import RiotAccountCreate, RiotAccountResponse
 from app.services import riot_account_service
 
@@ -13,14 +15,40 @@ router = APIRouter(prefix="/api/v1", tags=["riot_accounts"])
 
 
 @router.post("/players/{player_id}/riot-accounts", response_model=RiotAccountResponse, status_code=201)
-async def add_riot_account(player_id: int, account: RiotAccountCreate, db: Session = Depends(get_db)):
+async def add_riot_account(
+    player_id: int,
+    account: RiotAccountCreate,
+    db: Session = Depends(get_db),
+    team_ctx: TeamContext = Depends(get_current_team),
+):
+    # Verify player belongs to team
+    player = db.query(Player).filter(
+        Player.id == player_id,
+        Player.team_id == team_ctx.team_id,
+    ).first()
+    if not player:
+        raise HTTPException(status_code=404, detail="Player not found")
+
     return await riot_account_service.create_riot_account(db, player_id, account)
 
 
 @router.delete("/riot-accounts/{account_id}", status_code=204)
-async def delete_riot_account(account_id: int, db: Session = Depends(get_db)):
+async def delete_riot_account(
+    account_id: int,
+    db: Session = Depends(get_db),
+    team_ctx: TeamContext = Depends(get_current_team),
+):
     """Delete a riot account and all associated data"""
-    account = db.query(RiotAccount).filter(RiotAccount.id == account_id).first()
+    # Join with player to verify team ownership
+    account = (
+        db.query(RiotAccount)
+        .join(Player)
+        .filter(
+            RiotAccount.id == account_id,
+            Player.team_id == team_ctx.team_id,
+        )
+        .first()
+    )
     if not account:
         raise HTTPException(status_code=404, detail="Riot account not found")
 
@@ -40,10 +68,20 @@ async def delete_riot_account(account_id: int, db: Session = Depends(get_db)):
 async def update_riot_account_rank(
     account_id: int,
     rank_data: dict,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    team_ctx: TeamContext = Depends(get_current_team),
 ):
     """Update rank information manually for a riot account"""
-    account = db.query(RiotAccount).filter(RiotAccount.id == account_id).first()
+    # Join with player to verify team ownership
+    account = (
+        db.query(RiotAccount)
+        .join(Player)
+        .filter(
+            RiotAccount.id == account_id,
+            Player.team_id == team_ctx.team_id,
+        )
+        .first()
+    )
     if not account:
         raise HTTPException(status_code=404, detail="Riot account not found")
 

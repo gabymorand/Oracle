@@ -65,6 +65,11 @@ export interface LaneStats {
 
 export type UserRole = 'coach' | 'player' | 'head_coach' | 'manager'
 
+export interface TeamInfo {
+  id: number
+  name: string
+}
+
 export interface Coach {
   id: number
   name: string

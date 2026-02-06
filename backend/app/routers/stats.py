@@ -2,7 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.deps import TeamContext, get_current_team
 from app.models.game import Game
+from app.models.player import Player
 from app.models.rank_history import RankHistory
 from app.models.riot_account import RiotAccount
 from app.schemas.riot_account import RankHistoryEntry
@@ -12,8 +14,40 @@ from app.services import stats_service
 router = APIRouter(prefix="/api/v1/stats", tags=["stats"])
 
 
+def verify_player_team(db: Session, player_id: int, team_id: int) -> Player:
+    """Verify player belongs to team"""
+    player = db.query(Player).filter(
+        Player.id == player_id,
+        Player.team_id == team_id,
+    ).first()
+    if not player:
+        raise HTTPException(status_code=404, detail="Player not found")
+    return player
+
+
+def verify_riot_account_team(db: Session, riot_account_id: int, team_id: int) -> RiotAccount:
+    """Verify riot account belongs to a player in the team"""
+    riot_account = (
+        db.query(RiotAccount)
+        .join(Player)
+        .filter(
+            RiotAccount.id == riot_account_id,
+            Player.team_id == team_id,
+        )
+        .first()
+    )
+    if not riot_account:
+        raise HTTPException(status_code=404, detail="Riot account not found")
+    return riot_account
+
+
 @router.get("/player/{player_id}", response_model=PlayerStats)
-async def get_player_stats(player_id: int, db: Session = Depends(get_db)):
+async def get_player_stats(
+    player_id: int,
+    db: Session = Depends(get_db),
+    team_ctx: TeamContext = Depends(get_current_team),
+):
+    verify_player_team(db, player_id, team_ctx.team_id)
     stats = stats_service.get_player_stats(db, player_id)
     if not stats:
         raise HTTPException(status_code=404, detail="Player not found or no stats available")
@@ -21,32 +55,46 @@ async def get_player_stats(player_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/lane/{lane}", response_model=LaneStats)
-async def get_lane_stats(lane: str, db: Session = Depends(get_db)):
-    stats = stats_service.get_lane_stats(db, lane)
+async def get_lane_stats(
+    lane: str,
+    db: Session = Depends(get_db),
+    team_ctx: TeamContext = Depends(get_current_team),
+):
+    stats = stats_service.get_lane_stats(db, team_ctx.team_id, lane)
     if not stats:
         raise HTTPException(status_code=404, detail="Lane not found or no stats available")
     return stats
 
 
 @router.post("/refresh/{riot_account_id}", status_code=200)
-async def refresh_stats(riot_account_id: int, db: Session = Depends(get_db)):
+async def refresh_stats(
+    riot_account_id: int,
+    db: Session = Depends(get_db),
+    team_ctx: TeamContext = Depends(get_current_team),
+):
+    verify_riot_account_team(db, riot_account_id, team_ctx.team_id)
     await stats_service.refresh_player_stats(db, riot_account_id)
     return {"message": "Stats refreshed successfully"}
 
 
 @router.get("/team/highlights", response_model=TeamHighlights)
-async def get_team_highlights(db: Session = Depends(get_db)):
+async def get_team_highlights(
+    db: Session = Depends(get_db),
+    team_ctx: TeamContext = Depends(get_current_team),
+):
     """Get team highlights for sponsors page"""
-    highlights = stats_service.get_team_highlights(db)
+    highlights = stats_service.get_team_highlights(db, team_ctx.team_id)
     return highlights
 
 
 @router.get("/rank-history/{riot_account_id}", response_model=list[RankHistoryEntry])
-async def get_rank_history(riot_account_id: int, db: Session = Depends(get_db)):
+async def get_rank_history(
+    riot_account_id: int,
+    db: Session = Depends(get_db),
+    team_ctx: TeamContext = Depends(get_current_team),
+):
     """Get rank history for a riot account"""
-    riot_account = db.query(RiotAccount).filter(RiotAccount.id == riot_account_id).first()
-    if not riot_account:
-        raise HTTPException(status_code=404, detail="Riot account not found")
+    verify_riot_account_team(db, riot_account_id, team_ctx.team_id)
 
     history = (
         db.query(RankHistory)
@@ -61,12 +109,11 @@ async def get_rank_history(riot_account_id: int, db: Session = Depends(get_db)):
 async def get_account_games(
     riot_account_id: int,
     limit: int = Query(20, ge=1, le=100),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    team_ctx: TeamContext = Depends(get_current_team),
 ):
     """Get recent games for a riot account"""
-    riot_account = db.query(RiotAccount).filter(RiotAccount.id == riot_account_id).first()
-    if not riot_account:
-        raise HTTPException(status_code=404, detail="Riot account not found")
+    verify_riot_account_team(db, riot_account_id, team_ctx.team_id)
 
     games = (
         db.query(Game)
@@ -80,11 +127,13 @@ async def get_account_games(
 
 
 @router.get("/champions/{riot_account_id}", response_model=list[ChampionStats])
-async def get_champion_stats(riot_account_id: int, db: Session = Depends(get_db)):
+async def get_champion_stats(
+    riot_account_id: int,
+    db: Session = Depends(get_db),
+    team_ctx: TeamContext = Depends(get_current_team),
+):
     """Get champion statistics for a riot account"""
-    riot_account = db.query(RiotAccount).filter(RiotAccount.id == riot_account_id).first()
-    if not riot_account:
-        raise HTTPException(status_code=404, detail="Riot account not found")
+    verify_riot_account_team(db, riot_account_id, team_ctx.team_id)
 
     # Get all games for this account
     games = db.query(Game).filter(Game.riot_account_id == riot_account_id).all()

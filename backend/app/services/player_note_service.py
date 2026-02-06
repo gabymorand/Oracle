@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
 
+from app.models.player import Player
 from app.models.player_note import PlayerNote
 from app.schemas.player_note import PlayerNoteCreate, PlayerNoteUpdate
 
@@ -21,8 +22,19 @@ def create_note(db: Session, player_id: int, note: PlayerNoteCreate) -> PlayerNo
     return db_note
 
 
-def update_note(db: Session, note_id: int, note_update: PlayerNoteUpdate) -> PlayerNote | None:
-    db_note = db.query(PlayerNote).filter(PlayerNote.id == note_id).first()
+def update_note(
+    db: Session, team_id: int, note_id: int, note_update: PlayerNoteUpdate
+) -> PlayerNote | None:
+    # Join with Player to verify team ownership
+    db_note = (
+        db.query(PlayerNote)
+        .join(Player)
+        .filter(
+            PlayerNote.id == note_id,
+            Player.team_id == team_id,
+        )
+        .first()
+    )
     if not db_note:
         return None
 
@@ -35,8 +47,17 @@ def update_note(db: Session, note_id: int, note_update: PlayerNoteUpdate) -> Pla
     return db_note
 
 
-def delete_note(db: Session, note_id: int) -> bool:
-    db_note = db.query(PlayerNote).filter(PlayerNote.id == note_id).first()
+def delete_note(db: Session, team_id: int, note_id: int) -> bool:
+    # Join with Player to verify team ownership
+    db_note = (
+        db.query(PlayerNote)
+        .join(Player)
+        .filter(
+            PlayerNote.id == note_id,
+            Player.team_id == team_id,
+        )
+        .first()
+    )
     if not db_note:
         return False
 

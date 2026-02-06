@@ -105,7 +105,13 @@
         >
           Team Highlights
         </router-link>
-        <span class="text-gray-400 text-sm">{{ authStore.userRole }}</span>
+        <div class="flex items-center gap-2">
+          <span v-if="authStore.teamName" class="text-blue-400 text-sm font-medium">
+            {{ authStore.teamName }}
+          </span>
+          <span class="text-gray-500">|</span>
+          <span class="text-gray-400 text-sm">{{ authStore.userRole }}</span>
+        </div>
         <button
           @click="handleLogout"
           class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded transition text-sm"

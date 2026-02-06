@@ -34,7 +34,9 @@
       "Bash(DATABASE_URL=\"postgresql://oracle_user:oracle_password@localhost:5432/oracle_db\" /c/Users/gabri/Documents/TSC/.venv/Scripts/alembic upgrade head:*)",
       "Bash(timeout:*)",
       "Bash(curl:*)",
-      "Bash(npx vue-tsc:*)"
+      "Bash(npx vue-tsc:*)",
+      "Bash(docker ps:*)",
+      "Bash(python -m json.tool:*)"
     ]
   }
 }

@@ -23,20 +23,38 @@ from app.schemas.scrim_management import (
 # --- Opponent Teams ---
 
 
-def get_opponent_teams(db: Session, skip: int = 0, limit: int = 100) -> list[OpponentTeam]:
-    return db.query(OpponentTeam).order_by(OpponentTeam.name).offset(skip).limit(limit).all()
+def get_opponent_teams(
+    db: Session, team_id: int, skip: int = 0, limit: int = 100
+) -> list[OpponentTeam]:
+    return (
+        db.query(OpponentTeam)
+        .filter(OpponentTeam.team_id == team_id)
+        .order_by(OpponentTeam.name)
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
 
 
-def get_opponent_team(db: Session, team_id: int) -> OpponentTeam | None:
-    return db.query(OpponentTeam).filter(OpponentTeam.id == team_id).first()
+def get_opponent_team(db: Session, team_id: int, opponent_team_id: int) -> OpponentTeam | None:
+    return db.query(OpponentTeam).filter(
+        OpponentTeam.id == opponent_team_id,
+        OpponentTeam.team_id == team_id,
+    ).first()
 
 
-def get_opponent_team_by_name(db: Session, name: str) -> OpponentTeam | None:
-    return db.query(OpponentTeam).filter(func.lower(OpponentTeam.name) == name.lower()).first()
+def get_opponent_team_by_name(db: Session, team_id: int, name: str) -> OpponentTeam | None:
+    return db.query(OpponentTeam).filter(
+        OpponentTeam.team_id == team_id,
+        func.lower(OpponentTeam.name) == name.lower(),
+    ).first()
 
 
-def create_opponent_team(db: Session, team: OpponentTeamCreate) -> OpponentTeam:
-    db_team = OpponentTeam(**team.model_dump())
+def create_opponent_team(db: Session, team_id: int, team: OpponentTeamCreate) -> OpponentTeam:
+    db_team = OpponentTeam(
+        team_id=team_id,
+        **team.model_dump(),
+    )
     db.add(db_team)
     db.commit()
     db.refresh(db_team)
@@ -44,9 +62,9 @@ def create_opponent_team(db: Session, team: OpponentTeamCreate) -> OpponentTeam:
 
 
 def update_opponent_team(
-    db: Session, team_id: int, team_update: OpponentTeamUpdate
+    db: Session, team_id: int, opponent_team_id: int, team_update: OpponentTeamUpdate
 ) -> OpponentTeam | None:
-    db_team = get_opponent_team(db, team_id)
+    db_team = get_opponent_team(db, team_id, opponent_team_id)
     if not db_team:
         return None
     update_data = team_update.model_dump(exclude_unset=True)
@@ -57,8 +75,8 @@ def update_opponent_team(
     return db_team
 
 
-def delete_opponent_team(db: Session, team_id: int) -> bool:
-    db_team = get_opponent_team(db, team_id)
+def delete_opponent_team(db: Session, team_id: int, opponent_team_id: int) -> bool:
+    db_team = get_opponent_team(db, team_id, opponent_team_id)
     if not db_team:
         return False
     db.delete(db_team)
@@ -66,13 +84,15 @@ def delete_opponent_team(db: Session, team_id: int) -> bool:
     return True
 
 
-def get_opponent_team_with_stats(db: Session, team_id: int) -> OpponentTeamWithStats | None:
-    team = get_opponent_team(db, team_id)
+def get_opponent_team_with_stats(
+    db: Session, team_id: int, opponent_team_id: int
+) -> OpponentTeamWithStats | None:
+    team = get_opponent_team(db, team_id, opponent_team_id)
     if not team:
         return None
 
-    # Get scrim reviews for this team
-    reviews = db.query(ScrimReview).filter(ScrimReview.opponent_team_id == team_id).all()
+    # Get scrim reviews for this opponent team
+    reviews = db.query(ScrimReview).filter(ScrimReview.opponent_team_id == opponent_team_id).all()
 
     # Calculate stats
     total_scrims = len(reviews)
@@ -82,7 +102,7 @@ def get_opponent_team_with_stats(db: Session, team_id: int) -> OpponentTeamWithS
         avg_quality = sum(quality_values.get(r.quality, 3) for r in reviews) / len(reviews)
 
     scouted_count = (
-        db.query(ScoutedPlayer).filter(ScoutedPlayer.team_id == team_id).count()
+        db.query(ScoutedPlayer).filter(ScoutedPlayer.opponent_team_id == opponent_team_id).count()
     )
 
     return OpponentTeamWithStats(
@@ -103,17 +123,20 @@ def get_opponent_team_with_stats(db: Session, team_id: int) -> OpponentTeamWithS
     )
 
 
-def get_all_teams_with_stats(db: Session) -> list[OpponentTeamWithStats]:
-    teams = get_opponent_teams(db, limit=500)
-    return [get_opponent_team_with_stats(db, t.id) for t in teams if t]
+def get_all_teams_with_stats(db: Session, team_id: int) -> list[OpponentTeamWithStats]:
+    teams = get_opponent_teams(db, team_id, limit=500)
+    return [get_opponent_team_with_stats(db, team_id, t.id) for t in teams if t]
 
 
 # --- Scrim Reviews ---
 
 
-def get_scrim_reviews(db: Session, skip: int = 0, limit: int = 100) -> list[ScrimReview]:
+def get_scrim_reviews(db: Session, team_id: int, skip: int = 0, limit: int = 100) -> list[ScrimReview]:
+    # Join with CalendarEvent to filter by team_id
     return (
         db.query(ScrimReview)
+        .join(CalendarEvent)
+        .filter(CalendarEvent.team_id == team_id)
         .order_by(ScrimReview.created_at.desc())
         .offset(skip)
         .limit(limit)
@@ -121,15 +144,39 @@ def get_scrim_reviews(db: Session, skip: int = 0, limit: int = 100) -> list[Scri
     )
 
 
-def get_scrim_review(db: Session, review_id: int) -> ScrimReview | None:
-    return db.query(ScrimReview).filter(ScrimReview.id == review_id).first()
+def get_scrim_review(db: Session, team_id: int, review_id: int) -> ScrimReview | None:
+    return (
+        db.query(ScrimReview)
+        .join(CalendarEvent)
+        .filter(
+            ScrimReview.id == review_id,
+            CalendarEvent.team_id == team_id,
+        )
+        .first()
+    )
 
 
-def get_scrim_review_by_event(db: Session, event_id: int) -> ScrimReview | None:
-    return db.query(ScrimReview).filter(ScrimReview.calendar_event_id == event_id).first()
+def get_scrim_review_by_event(db: Session, team_id: int, event_id: int) -> ScrimReview | None:
+    return (
+        db.query(ScrimReview)
+        .join(CalendarEvent)
+        .filter(
+            ScrimReview.calendar_event_id == event_id,
+            CalendarEvent.team_id == team_id,
+        )
+        .first()
+    )
 
 
-def create_scrim_review(db: Session, review: ScrimReviewCreate) -> ScrimReview:
+def create_scrim_review(db: Session, team_id: int, review: ScrimReviewCreate) -> ScrimReview:
+    # Verify the event belongs to the team
+    event = db.query(CalendarEvent).filter(
+        CalendarEvent.id == review.calendar_event_id,
+        CalendarEvent.team_id == team_id,
+    ).first()
+    if not event:
+        raise ValueError("Event not found")
+
     db_review = ScrimReview(**review.model_dump())
     db.add(db_review)
     db.commit()
@@ -138,9 +185,9 @@ def create_scrim_review(db: Session, review: ScrimReviewCreate) -> ScrimReview:
 
 
 def update_scrim_review(
-    db: Session, review_id: int, review_update: ScrimReviewUpdate
+    db: Session, team_id: int, review_id: int, review_update: ScrimReviewUpdate
 ) -> ScrimReview | None:
-    db_review = get_scrim_review(db, review_id)
+    db_review = get_scrim_review(db, team_id, review_id)
     if not db_review:
         return None
     update_data = review_update.model_dump(exclude_unset=True)
@@ -151,8 +198,8 @@ def update_scrim_review(
     return db_review
 
 
-def delete_scrim_review(db: Session, review_id: int) -> bool:
-    db_review = get_scrim_review(db, review_id)
+def delete_scrim_review(db: Session, team_id: int, review_id: int) -> bool:
+    db_review = get_scrim_review(db, team_id, review_id)
     if not db_review:
         return False
     db.delete(db_review)
@@ -160,16 +207,16 @@ def delete_scrim_review(db: Session, review_id: int) -> bool:
     return True
 
 
-def get_scrim_review_with_team(db: Session, review_id: int) -> ScrimReviewWithTeam | None:
-    review = get_scrim_review(db, review_id)
+def get_scrim_review_with_team(db: Session, team_id: int, review_id: int) -> ScrimReviewWithTeam | None:
+    review = get_scrim_review(db, team_id, review_id)
     if not review:
         return None
 
     team_name = None
     if review.opponent_team_id:
-        team = get_opponent_team(db, review.opponent_team_id)
-        if team:
-            team_name = team.name
+        opponent = get_opponent_team(db, team_id, review.opponent_team_id)
+        if opponent:
+            team_name = opponent.name
 
     return ScrimReviewWithTeam(
         id=review.id,
@@ -191,32 +238,58 @@ def get_scrim_review_with_team(db: Session, review_id: int) -> ScrimReviewWithTe
 
 
 def get_scouted_players(
-    db: Session, skip: int = 0, limit: int = 100, prospects_only: bool = False
+    db: Session, team_id: int, skip: int = 0, limit: int = 100, prospects_only: bool = False
 ) -> list[ScoutedPlayer]:
-    query = db.query(ScoutedPlayer)
+    # Join with OpponentTeam to filter by team_id
+    query = (
+        db.query(ScoutedPlayer)
+        .join(OpponentTeam)
+        .filter(OpponentTeam.team_id == team_id)
+    )
     if prospects_only:
         query = query.filter(ScoutedPlayer.is_prospect == 1)
     return query.order_by(ScoutedPlayer.rating.desc().nullslast()).offset(skip).limit(limit).all()
 
 
-def get_scouted_player(db: Session, player_id: int) -> ScoutedPlayer | None:
-    return db.query(ScoutedPlayer).filter(ScoutedPlayer.id == player_id).first()
-
-
-def get_scouted_players_by_team(db: Session, team_id: int) -> list[ScoutedPlayer]:
+def get_scouted_player(db: Session, team_id: int, player_id: int) -> ScoutedPlayer | None:
     return (
         db.query(ScoutedPlayer)
-        .filter(ScoutedPlayer.team_id == team_id)
+        .join(OpponentTeam)
+        .filter(
+            ScoutedPlayer.id == player_id,
+            OpponentTeam.team_id == team_id,
+        )
+        .first()
+    )
+
+
+def get_scouted_players_by_opponent_team(
+    db: Session, team_id: int, opponent_team_id: int
+) -> list[ScoutedPlayer]:
+    # First verify opponent team belongs to our team
+    opponent = get_opponent_team(db, team_id, opponent_team_id)
+    if not opponent:
+        return []
+
+    return (
+        db.query(ScoutedPlayer)
+        .filter(ScoutedPlayer.opponent_team_id == opponent_team_id)
         .order_by(ScoutedPlayer.rating.desc().nullslast())
         .all()
     )
 
 
-def create_scouted_player(db: Session, player: ScoutedPlayerCreate) -> ScoutedPlayer:
+def create_scouted_player(db: Session, team_id: int, player: ScoutedPlayerCreate) -> ScoutedPlayer:
+    # Verify opponent team belongs to our team
+    if player.opponent_team_id:
+        opponent = get_opponent_team(db, team_id, player.opponent_team_id)
+        if not opponent:
+            raise ValueError("Opponent team not found")
+
     db_player = ScoutedPlayer(
         summoner_name=player.summoner_name,
         tag_line=player.tag_line,
-        team_id=player.team_id,
+        opponent_team_id=player.opponent_team_id,
         role=player.role,
         rating=player.rating,
         mechanical_skill=player.mechanical_skill,
@@ -234,9 +307,9 @@ def create_scouted_player(db: Session, player: ScoutedPlayerCreate) -> ScoutedPl
 
 
 def update_scouted_player(
-    db: Session, player_id: int, player_update: ScoutedPlayerUpdate
+    db: Session, team_id: int, player_id: int, player_update: ScoutedPlayerUpdate
 ) -> ScoutedPlayer | None:
-    db_player = get_scouted_player(db, player_id)
+    db_player = get_scouted_player(db, team_id, player_id)
     if not db_player:
         return None
     update_data = player_update.model_dump(exclude_unset=True)
@@ -251,8 +324,8 @@ def update_scouted_player(
     return db_player
 
 
-def delete_scouted_player(db: Session, player_id: int) -> bool:
-    db_player = get_scouted_player(db, player_id)
+def delete_scouted_player(db: Session, team_id: int, player_id: int) -> bool:
+    db_player = get_scouted_player(db, team_id, player_id)
     if not db_player:
         return False
     db.delete(db_player)
@@ -260,22 +333,24 @@ def delete_scouted_player(db: Session, player_id: int) -> bool:
     return True
 
 
-def get_scouted_player_with_team(db: Session, player_id: int) -> ScoutedPlayerWithTeam | None:
-    player = get_scouted_player(db, player_id)
+def get_scouted_player_with_team(
+    db: Session, team_id: int, player_id: int
+) -> ScoutedPlayerWithTeam | None:
+    player = get_scouted_player(db, team_id, player_id)
     if not player:
         return None
 
     team_name = None
-    if player.team_id:
-        team = get_opponent_team(db, player.team_id)
-        if team:
-            team_name = team.name
+    if player.opponent_team_id:
+        opponent = get_opponent_team(db, team_id, player.opponent_team_id)
+        if opponent:
+            team_name = opponent.name
 
     return ScoutedPlayerWithTeam(
         id=player.id,
         summoner_name=player.summoner_name,
         tag_line=player.tag_line,
-        team_id=player.team_id,
+        opponent_team_id=player.opponent_team_id,
         role=player.role,
         rating=player.rating,
         mechanical_skill=player.mechanical_skill,
@@ -294,11 +369,14 @@ def get_scouted_player_with_team(db: Session, player_id: int) -> ScoutedPlayerWi
 # --- Dashboard ---
 
 
-def get_scrim_history(db: Session, limit: int = 50) -> list[ScrimHistoryItem]:
+def get_scrim_history(db: Session, team_id: int, limit: int = 50) -> list[ScrimHistoryItem]:
     """Get recent scrims with reviews and results"""
     scrims = (
         db.query(CalendarEvent)
-        .filter(CalendarEvent.event_type == "scrim")
+        .filter(
+            CalendarEvent.team_id == team_id,
+            CalendarEvent.event_type == "scrim",
+        )
         .order_by(CalendarEvent.date.desc())
         .limit(limit)
         .all()
@@ -306,7 +384,7 @@ def get_scrim_history(db: Session, limit: int = 50) -> list[ScrimHistoryItem]:
 
     history = []
     for scrim in scrims:
-        review = get_scrim_review_by_event(db, scrim.id)
+        review = get_scrim_review_by_event(db, team_id, scrim.id)
 
         # Get draft series result if linked
         draft_result = None
@@ -315,7 +393,10 @@ def get_scrim_history(db: Session, limit: int = 50) -> list[ScrimHistoryItem]:
         if scrim.draft_series_id:
             from app.models.draft import DraftSeries
 
-            series = db.query(DraftSeries).filter(DraftSeries.id == scrim.draft_series_id).first()
+            series = db.query(DraftSeries).filter(
+                DraftSeries.id == scrim.draft_series_id,
+                DraftSeries.team_id == team_id,
+            ).first()
             if series:
                 draft_result = series.result
                 our_score = series.our_score
@@ -339,18 +420,46 @@ def get_scrim_history(db: Session, limit: int = 50) -> list[ScrimHistoryItem]:
     return history
 
 
-def get_manager_dashboard(db: Session) -> ScrimManagementDashboard:
+def get_manager_dashboard(db: Session, team_id: int) -> ScrimManagementDashboard:
     """Get aggregated dashboard data for managers"""
     total_scrims = (
-        db.query(CalendarEvent).filter(CalendarEvent.event_type == "scrim").count()
+        db.query(CalendarEvent)
+        .filter(
+            CalendarEvent.team_id == team_id,
+            CalendarEvent.event_type == "scrim",
+        )
+        .count()
     )
-    reviewed_scrims = db.query(ScrimReview).count()
-    total_teams = db.query(OpponentTeam).count()
-    total_scouted = db.query(ScoutedPlayer).count()
-    prospects = db.query(ScoutedPlayer).filter(ScoutedPlayer.is_prospect == 1).count()
 
-    recent = get_scrim_history(db, limit=10)
-    top_teams = get_all_teams_with_stats(db)[:5]
+    # Count reviews for this team's events
+    reviewed_scrims = (
+        db.query(ScrimReview)
+        .join(CalendarEvent)
+        .filter(CalendarEvent.team_id == team_id)
+        .count()
+    )
+
+    total_teams = db.query(OpponentTeam).filter(OpponentTeam.team_id == team_id).count()
+
+    total_scouted = (
+        db.query(ScoutedPlayer)
+        .join(OpponentTeam)
+        .filter(OpponentTeam.team_id == team_id)
+        .count()
+    )
+
+    prospects = (
+        db.query(ScoutedPlayer)
+        .join(OpponentTeam)
+        .filter(
+            OpponentTeam.team_id == team_id,
+            ScoutedPlayer.is_prospect == 1,
+        )
+        .count()
+    )
+
+    recent = get_scrim_history(db, team_id, limit=10)
+    top_teams = get_all_teams_with_stats(db, team_id)[:5]
 
     return ScrimManagementDashboard(
         total_scrims=total_scrims,

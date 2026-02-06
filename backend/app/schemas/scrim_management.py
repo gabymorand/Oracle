@@ -110,7 +110,7 @@ class ScrimReviewWithTeam(ScrimReviewResponse):
 class ScoutedPlayerBase(BaseModel):
     summoner_name: str
     tag_line: str | None = None
-    team_id: int | None = None
+    opponent_team_id: int | None = None
     role: str | None = None
     rating: int | None = Field(None, ge=1, le=5)
     mechanical_skill: int | None = Field(None, ge=1, le=5)
@@ -129,7 +129,7 @@ class ScoutedPlayerCreate(ScoutedPlayerBase):
 class ScoutedPlayerUpdate(BaseModel):
     summoner_name: str | None = None
     tag_line: str | None = None
-    team_id: int | None = None
+    opponent_team_id: int | None = None
     role: str | None = None
     rating: int | None = Field(None, ge=1, le=5)
     mechanical_skill: int | None = Field(None, ge=1, le=5)
@@ -141,8 +141,20 @@ class ScoutedPlayerUpdate(BaseModel):
     is_prospect: bool | None = None
 
 
-class ScoutedPlayerResponse(ScoutedPlayerBase):
+class ScoutedPlayerResponse(BaseModel):
     id: int
+    summoner_name: str
+    tag_line: str | None = None
+    opponent_team_id: int | None = None
+    role: str | None = None
+    rating: int | None = None
+    mechanical_skill: int | None = None
+    game_sense: int | None = None
+    communication: int | None = None
+    attitude: int | None = None
+    potential: str | None = None
+    notes: str | None = None
+    is_prospect: bool = False
     created_at: datetime
     updated_at: datetime | None
 

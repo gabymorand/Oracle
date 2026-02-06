@@ -4,24 +4,33 @@ from app.models.player import Player
 from app.schemas.player import PlayerCreate, PlayerUpdate
 
 
-def get_all_players(db: Session) -> list[Player]:
-    return db.query(Player).all()
+def get_all_players(db: Session, team_id: int) -> list[Player]:
+    return db.query(Player).filter(Player.team_id == team_id).all()
 
 
-def get_player(db: Session, player_id: int) -> Player | None:
-    return db.query(Player).filter(Player.id == player_id).first()
+def get_player(db: Session, player_id: int, team_id: int) -> Player | None:
+    return db.query(Player).filter(
+        Player.id == player_id,
+        Player.team_id == team_id,
+    ).first()
 
 
-def create_player(db: Session, player: PlayerCreate) -> Player:
-    db_player = Player(summoner_name=player.summoner_name, role=player.role)
+def create_player(db: Session, player: PlayerCreate, team_id: int) -> Player:
+    db_player = Player(
+        team_id=team_id,
+        summoner_name=player.summoner_name,
+        role=player.role,
+    )
     db.add(db_player)
     db.commit()
     db.refresh(db_player)
     return db_player
 
 
-def update_player(db: Session, player_id: int, player_update: PlayerUpdate) -> Player | None:
-    db_player = get_player(db, player_id)
+def update_player(
+    db: Session, player_id: int, player_update: PlayerUpdate, team_id: int
+) -> Player | None:
+    db_player = get_player(db, player_id, team_id)
     if not db_player:
         return None
 
@@ -34,8 +43,8 @@ def update_player(db: Session, player_id: int, player_update: PlayerUpdate) -> P
     return db_player
 
 
-def delete_player(db: Session, player_id: int) -> bool:
-    db_player = get_player(db, player_id)
+def delete_player(db: Session, player_id: int, team_id: int) -> bool:
+    db_player = get_player(db, player_id, team_id)
     if not db_player:
         return False
 

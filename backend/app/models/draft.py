@@ -23,6 +23,7 @@ class DraftSeries(Base):
     __tablename__ = "draft_series"
 
     id = Column(Integer, primary_key=True, index=True)
+    team_id = Column(Integer, ForeignKey("teams.id", ondelete="CASCADE"), nullable=False, index=True)
     date = Column(Date, nullable=False)
     opponent_name = Column(String, nullable=False)
     format = Column(String, nullable=False, default="bo1")  # bo1, bo3, bo5
@@ -33,7 +34,8 @@ class DraftSeries(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    # Relationship to individual games
+    # Relationships
+    team = relationship("Team", back_populates="draft_series")
     games = relationship("DraftGame", back_populates="series", cascade="all, delete-orphan")
 
 

@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.deps import TeamContext, get_current_team
 from app.models.draft import DraftGame, DraftSeries
 from app.schemas.draft import (
     DraftGameCreate,
@@ -151,11 +152,13 @@ def update_series_scores(db: Session, series: DraftSeries):
 async def list_draft_series(
     skip: int = 0,
     limit: int = 50,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    team_ctx: TeamContext = Depends(get_current_team),
 ):
     """List all draft series"""
     series_list = (
         db.query(DraftSeries)
+        .filter(DraftSeries.team_id == team_ctx.team_id)
         .order_by(DraftSeries.date.desc())
         .offset(skip)
         .limit(limit)
@@ -186,11 +189,13 @@ async def list_draft_series(
 async def list_draft_series_with_games(
     skip: int = 0,
     limit: int = 50,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    team_ctx: TeamContext = Depends(get_current_team),
 ):
     """List all draft series with their games included"""
     series_list = (
         db.query(DraftSeries)
+        .filter(DraftSeries.team_id == team_ctx.team_id)
         .order_by(DraftSeries.date.desc())
         .offset(skip)
         .limit(limit)
@@ -202,10 +207,12 @@ async def list_draft_series_with_games(
 @router.post("", response_model=DraftSeriesResponse)
 async def create_draft_series(
     series_data: DraftSeriesCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    team_ctx: TeamContext = Depends(get_current_team),
 ):
     """Create a new draft series"""
     series = DraftSeries(
+        team_id=team_ctx.team_id,
         date=series_data.date,
         opponent_name=series_data.opponent_name,
         format=series_data.format,
@@ -220,9 +227,16 @@ async def create_draft_series(
 
 
 @router.get("/{series_id}", response_model=DraftSeriesResponse)
-async def get_draft_series(series_id: int, db: Session = Depends(get_db)):
+async def get_draft_series(
+    series_id: int,
+    db: Session = Depends(get_db),
+    team_ctx: TeamContext = Depends(get_current_team),
+):
     """Get a draft series with all its games"""
-    series = db.query(DraftSeries).filter(DraftSeries.id == series_id).first()
+    series = db.query(DraftSeries).filter(
+        DraftSeries.id == series_id,
+        DraftSeries.team_id == team_ctx.team_id,
+    ).first()
     if not series:
         raise HTTPException(status_code=404, detail="Draft series not found")
     return series
@@ -232,10 +246,14 @@ async def get_draft_series(series_id: int, db: Session = Depends(get_db)):
 async def update_draft_series(
     series_id: int,
     series_data: DraftSeriesUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    team_ctx: TeamContext = Depends(get_current_team),
 ):
     """Update a draft series"""
-    series = db.query(DraftSeries).filter(DraftSeries.id == series_id).first()
+    series = db.query(DraftSeries).filter(
+        DraftSeries.id == series_id,
+        DraftSeries.team_id == team_ctx.team_id,
+    ).first()
     if not series:
         raise HTTPException(status_code=404, detail="Draft series not found")
 
@@ -249,9 +267,16 @@ async def update_draft_series(
 
 
 @router.delete("/{series_id}")
-async def delete_draft_series(series_id: int, db: Session = Depends(get_db)):
+async def delete_draft_series(
+    series_id: int,
+    db: Session = Depends(get_db),
+    team_ctx: TeamContext = Depends(get_current_team),
+):
     """Delete a draft series and all its games"""
-    series = db.query(DraftSeries).filter(DraftSeries.id == series_id).first()
+    series = db.query(DraftSeries).filter(
+        DraftSeries.id == series_id,
+        DraftSeries.team_id == team_ctx.team_id,
+    ).first()
     if not series:
         raise HTTPException(status_code=404, detail="Draft series not found")
 
@@ -265,10 +290,14 @@ async def delete_draft_series(series_id: int, db: Session = Depends(get_db)):
 async def add_game_to_series(
     series_id: int,
     game_data: DraftGameCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    team_ctx: TeamContext = Depends(get_current_team),
 ):
     """Add a game to a draft series"""
-    series = db.query(DraftSeries).filter(DraftSeries.id == series_id).first()
+    series = db.query(DraftSeries).filter(
+        DraftSeries.id == series_id,
+        DraftSeries.team_id == team_ctx.team_id,
+    ).first()
     if not series:
         raise HTTPException(status_code=404, detail="Draft series not found")
 
@@ -310,9 +339,18 @@ async def update_game(
     series_id: int,
     game_id: int,
     game_data: DraftGameCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    team_ctx: TeamContext = Depends(get_current_team),
 ):
     """Update a game in a series"""
+    # Verify series belongs to team
+    series = db.query(DraftSeries).filter(
+        DraftSeries.id == series_id,
+        DraftSeries.team_id == team_ctx.team_id,
+    ).first()
+    if not series:
+        raise HTTPException(status_code=404, detail="Draft series not found")
+
     game = (
         db.query(DraftGame)
         .filter(DraftGame.id == game_id, DraftGame.series_id == series_id)
@@ -327,7 +365,6 @@ async def update_game(
     db.commit()
 
     # Update series scores
-    series = db.query(DraftSeries).filter(DraftSeries.id == series_id).first()
     update_series_scores(db, series)
 
     db.refresh(game)
@@ -338,9 +375,18 @@ async def update_game(
 async def delete_game(
     series_id: int,
     game_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    team_ctx: TeamContext = Depends(get_current_team),
 ):
     """Delete a game from a series"""
+    # Verify series belongs to team
+    series = db.query(DraftSeries).filter(
+        DraftSeries.id == series_id,
+        DraftSeries.team_id == team_ctx.team_id,
+    ).first()
+    if not series:
+        raise HTTPException(status_code=404, detail="Draft series not found")
+
     game = (
         db.query(DraftGame)
         .filter(DraftGame.id == game_id, DraftGame.series_id == series_id)
@@ -348,8 +394,6 @@ async def delete_game(
     )
     if not game:
         raise HTTPException(status_code=404, detail="Game not found")
-
-    series = db.query(DraftSeries).filter(DraftSeries.id == series_id).first()
 
     db.delete(game)
     db.commit()

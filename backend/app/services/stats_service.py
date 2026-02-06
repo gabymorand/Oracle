@@ -56,14 +56,17 @@ def get_player_stats(db: Session, player_id: int) -> PlayerStats | None:
     )
 
 
-def get_lane_stats(db: Session, lane: str) -> LaneStats | None:
+def get_lane_stats(db: Session, team_id: int, lane: str) -> LaneStats | None:
     # For botlane, get ADC + Support
     if lane == "botlane":
         roles = ["adc", "support"]
     else:
         roles = [lane]
 
-    players = db.query(Player).filter(Player.role.in_(roles)).all()
+    players = db.query(Player).filter(
+        Player.team_id == team_id,
+        Player.role.in_(roles),
+    ).all()
     if not players:
         return None
 
@@ -137,10 +140,16 @@ async def refresh_player_stats(db: Session, riot_account_id: int):
             raise HTTPException(status_code=500, detail=f"Failed to fetch stats from Riot API: {error_msg}")
 
 
-def get_team_highlights(db: Session) -> TeamHighlights:
+def get_team_highlights(db: Session, team_id: int) -> TeamHighlights:
     """Get team highlights for sponsors page"""
-    # Get all games
-    all_games = db.query(Game).all()
+    # Get all games for this team's players
+    all_games = (
+        db.query(Game)
+        .join(RiotAccount)
+        .join(Player)
+        .filter(Player.team_id == team_id)
+        .all()
+    )
     total_games = len(all_games)
     total_wins = sum(1 for g in all_games if g.stats.get("win", False))
     winrate = (total_wins / total_games * 100) if total_games > 0 else 0.0
@@ -156,7 +165,13 @@ def get_team_highlights(db: Session) -> TeamHighlights:
 
     # Get recent matches (last 10)
     recent_matches = (
-        db.query(Game).order_by(Game.game_date.desc()).limit(10).all()
+        db.query(Game)
+        .join(RiotAccount)
+        .join(Player)
+        .filter(Player.team_id == team_id)
+        .order_by(Game.game_date.desc())
+        .limit(10)
+        .all()
     )
 
     return TeamHighlights(

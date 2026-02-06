@@ -21,7 +21,7 @@ from app.schemas.calendar import (
 # --- Events ---
 
 
-def get_events_by_month(db: Session, year: int, month: int) -> list[CalendarEvent]:
+def get_events_by_month(db: Session, team_id: int, year: int, month: int) -> list[CalendarEvent]:
     """Get all events for a specific month"""
     start_date = date_type(year, month, 1)
     _, last_day = monthrange(year, month)
@@ -29,30 +29,40 @@ def get_events_by_month(db: Session, year: int, month: int) -> list[CalendarEven
 
     return (
         db.query(CalendarEvent)
-        .filter(CalendarEvent.date >= start_date, CalendarEvent.date <= end_date)
+        .filter(
+            CalendarEvent.team_id == team_id,
+            CalendarEvent.date >= start_date,
+            CalendarEvent.date <= end_date,
+        )
         .order_by(CalendarEvent.date, CalendarEvent.slot)
         .all()
     )
 
 
-def get_events_by_date(db: Session, date: date_type) -> list[CalendarEvent]:
+def get_events_by_date(db: Session, team_id: int, date: date_type) -> list[CalendarEvent]:
     """Get all events for a specific date"""
     return (
         db.query(CalendarEvent)
-        .filter(CalendarEvent.date == date)
+        .filter(
+            CalendarEvent.team_id == team_id,
+            CalendarEvent.date == date,
+        )
         .order_by(CalendarEvent.slot)
         .all()
     )
 
 
-def get_event(db: Session, event_id: int) -> CalendarEvent | None:
+def get_event(db: Session, team_id: int, event_id: int) -> CalendarEvent | None:
     """Get event by ID"""
-    return db.query(CalendarEvent).filter(CalendarEvent.id == event_id).first()
+    return db.query(CalendarEvent).filter(
+        CalendarEvent.id == event_id,
+        CalendarEvent.team_id == team_id,
+    ).first()
 
 
-def get_event_with_series(db: Session, event_id: int) -> dict | None:
+def get_event_with_series(db: Session, team_id: int, event_id: int) -> dict | None:
     """Get event with draft series info"""
-    event = get_event(db, event_id)
+    event = get_event(db, team_id, event_id)
     if not event:
         return None
 
@@ -75,7 +85,10 @@ def get_event_with_series(db: Session, event_id: int) -> dict | None:
     }
 
     if event.draft_series_id:
-        series = db.query(DraftSeries).filter(DraftSeries.id == event.draft_series_id).first()
+        series = db.query(DraftSeries).filter(
+            DraftSeries.id == event.draft_series_id,
+            DraftSeries.team_id == team_id,
+        ).first()
         if series:
             result["draft_series_info"] = DraftSeriesInfo(
                 id=series.id,
@@ -89,9 +102,10 @@ def get_event_with_series(db: Session, event_id: int) -> dict | None:
     return result
 
 
-def create_event(db: Session, event_data: CalendarEventCreate) -> CalendarEvent:
+def create_event(db: Session, team_id: int, event_data: CalendarEventCreate) -> CalendarEvent:
     """Create a new calendar event"""
     event = CalendarEvent(
+        team_id=team_id,
         title=event_data.title,
         event_type=event_data.event_type.value,
         date=event_data.date,
@@ -110,9 +124,11 @@ def create_event(db: Session, event_data: CalendarEventCreate) -> CalendarEvent:
     return event
 
 
-def update_event(db: Session, event_id: int, event_update: CalendarEventUpdate) -> CalendarEvent | None:
+def update_event(
+    db: Session, team_id: int, event_id: int, event_update: CalendarEventUpdate
+) -> CalendarEvent | None:
     """Update an event"""
-    event = get_event(db, event_id)
+    event = get_event(db, team_id, event_id)
     if not event:
         return None
 
@@ -130,9 +146,9 @@ def update_event(db: Session, event_id: int, event_update: CalendarEventUpdate) 
     return event
 
 
-def delete_event(db: Session, event_id: int) -> bool:
+def delete_event(db: Session, team_id: int, event_id: int) -> bool:
     """Delete an event"""
-    event = get_event(db, event_id)
+    event = get_event(db, team_id, event_id)
     if not event:
         return False
 
@@ -141,11 +157,14 @@ def delete_event(db: Session, event_id: int) -> bool:
     return True
 
 
-def get_scrims(db: Session, limit: int = 50) -> list[dict]:
+def get_scrims(db: Session, team_id: int, limit: int = 50) -> list[dict]:
     """Get all scrims with draft series info"""
     scrims = (
         db.query(CalendarEvent)
-        .filter(CalendarEvent.event_type == "scrim")
+        .filter(
+            CalendarEvent.team_id == team_id,
+            CalendarEvent.event_type == "scrim",
+        )
         .order_by(CalendarEvent.date.desc())
         .limit(limit)
         .all()
@@ -172,7 +191,10 @@ def get_scrims(db: Session, limit: int = 50) -> list[dict]:
         }
 
         if scrim.draft_series_id:
-            series = db.query(DraftSeries).filter(DraftSeries.id == scrim.draft_series_id).first()
+            series = db.query(DraftSeries).filter(
+                DraftSeries.id == scrim.draft_series_id,
+                DraftSeries.team_id == team_id,
+            ).first()
             if series:
                 scrim_dict["draft_series_info"] = {
                     "id": series.id,
@@ -207,9 +229,17 @@ def get_player_availability(
 
 
 def set_player_availability(
-    db: Session, player_id: int, availability: AvailabilityCreate
+    db: Session, team_id: int, player_id: int, availability: AvailabilityCreate
 ) -> PlayerAvailability:
     """Set or update a player's availability"""
+    # Verify player belongs to team
+    player = db.query(Player).filter(
+        Player.id == player_id,
+        Player.team_id == team_id,
+    ).first()
+    if not player:
+        raise ValueError("Player not found")
+
     existing = get_player_availability(db, player_id, availability.date, availability.slot.value)
 
     if existing:
@@ -234,19 +264,28 @@ def set_player_availability(
 
 
 def set_player_availability_bulk(
-    db: Session, player_id: int, availabilities: list[AvailabilityCreate]
+    db: Session, team_id: int, player_id: int, availabilities: list[AvailabilityCreate]
 ) -> list[PlayerAvailability]:
     """Set multiple availability slots"""
     results = []
     for availability in availabilities:
-        result = set_player_availability(db, player_id, availability)
+        result = set_player_availability(db, team_id, player_id, availability)
         results.append(result)
     return results
 
 
-def delete_availability(db: Session, availability_id: int) -> bool:
+def delete_availability(db: Session, team_id: int, availability_id: int) -> bool:
     """Delete an availability entry"""
-    availability = db.query(PlayerAvailability).filter(PlayerAvailability.id == availability_id).first()
+    # Join with player to verify team ownership
+    availability = (
+        db.query(PlayerAvailability)
+        .join(Player)
+        .filter(
+            PlayerAvailability.id == availability_id,
+            Player.team_id == team_id,
+        )
+        .first()
+    )
     if not availability:
         return False
 
@@ -255,10 +294,19 @@ def delete_availability(db: Session, availability_id: int) -> bool:
     return True
 
 
-def get_day_availabilities(db: Session, date: date_type) -> DayAvailabilitySummary:
+def get_day_availabilities(db: Session, team_id: int, date: date_type) -> DayAvailabilitySummary:
     """Get all players' availability for a specific date"""
-    players = db.query(Player).all()
-    availabilities_db = db.query(PlayerAvailability).filter(PlayerAvailability.date == date).all()
+    players = db.query(Player).filter(Player.team_id == team_id).all()
+    player_ids = [p.id for p in players]
+
+    availabilities_db = (
+        db.query(PlayerAvailability)
+        .filter(
+            PlayerAvailability.date == date,
+            PlayerAvailability.player_id.in_(player_ids),
+        )
+        .all()
+    )
 
     # Build lookup: player_id -> slot -> is_available
     avail_lookup: dict[int, dict[str, bool]] = {}
@@ -283,20 +331,22 @@ def get_day_availabilities(db: Session, date: date_type) -> DayAvailabilitySumma
     return DayAvailabilitySummary(date=date, availabilities=summaries)
 
 
-def get_month_availabilities(db: Session, year: int, month: int) -> list[DayAvailabilitySummary]:
+def get_month_availabilities(
+    db: Session, team_id: int, year: int, month: int
+) -> list[DayAvailabilitySummary]:
     """Get all availabilities for a month"""
     _, last_day = monthrange(year, month)
     results = []
     for day in range(1, last_day + 1):
         date = date_type(year, month, day)
-        results.append(get_day_availabilities(db, date))
+        results.append(get_day_availabilities(db, team_id, date))
     return results
 
 
-def get_day_detail(db: Session, date: date_type) -> DayDetail:
+def get_day_detail(db: Session, team_id: int, date: date_type) -> DayDetail:
     """Get complete day detail: events + availabilities"""
-    events = get_events_by_date(db, date)
-    availabilities = get_day_availabilities(db, date)
+    events = get_events_by_date(db, team_id, date)
+    availabilities = get_day_availabilities(db, team_id, date)
 
     return DayDetail(
         date=date,

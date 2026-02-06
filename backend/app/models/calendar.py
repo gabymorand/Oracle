@@ -42,6 +42,7 @@ class CalendarEvent(Base):
     __tablename__ = "calendar_events"
 
     id = Column(Integer, primary_key=True, index=True)
+    team_id = Column(Integer, ForeignKey("teams.id", ondelete="CASCADE"), nullable=False, index=True)
     title = Column(String, nullable=False)
     event_type = Column(String, nullable=False)  # scrim/training/official_match/meeting/other
     date = Column(Date, nullable=False, index=True)
@@ -65,4 +66,5 @@ class CalendarEvent(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+    team = relationship("Team", back_populates="calendar_events")
     draft_series = relationship("DraftSeries", backref="calendar_events")
