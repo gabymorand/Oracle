@@ -3,7 +3,20 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse, JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from app.routers import auth, coaches, draft_series, drafts, games, player_notes, players, riot_accounts, stats
+from app.routers import (
+    auth,
+    calendar,
+    coaches,
+    draft_series,
+    drafts,
+    games,
+    player_notes,
+    players,
+    riot_accounts,
+    scrim_management,
+    stats,
+    tier_list,
+)
 
 
 class CORSMiddlewareCustom(BaseHTTPMiddleware):
@@ -55,6 +68,9 @@ app.include_router(drafts.router)
 app.include_router(draft_series.router)
 app.include_router(games.router)
 app.include_router(stats.router)
+app.include_router(calendar.router)
+app.include_router(tier_list.router)
+app.include_router(scrim_management.router)
 
 
 @app.get("/")

@@ -32,6 +32,14 @@
           <div class="text-xl mb-1">Head Coach</div>
           <div class="text-sm text-gray-300">Full access + draft planning</div>
         </button>
+
+        <button
+          @click="selectRole('manager')"
+          class="w-full bg-gray-700 hover:bg-orange-600 text-white font-semibold py-4 px-6 rounded-lg transition transform hover:scale-105"
+        >
+          <div class="text-xl mb-1">Manager</div>
+          <div class="text-sm text-gray-300">Scrims, contacts et scouting</div>
+        </button>
       </div>
 
       <button

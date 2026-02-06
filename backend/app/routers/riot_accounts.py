@@ -4,6 +4,8 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.riot_account import RiotAccount
+from app.models.game import Game
+from app.models.rank_history import RankHistory
 from app.schemas.riot_account import RiotAccountCreate, RiotAccountResponse
 from app.services import riot_account_service
 
@@ -15,7 +17,26 @@ async def add_riot_account(player_id: int, account: RiotAccountCreate, db: Sessi
     return await riot_account_service.create_riot_account(db, player_id, account)
 
 
-@router.patch("/{account_id}/rank", response_model=RiotAccountResponse, status_code=200)
+@router.delete("/riot-accounts/{account_id}", status_code=204)
+async def delete_riot_account(account_id: int, db: Session = Depends(get_db)):
+    """Delete a riot account and all associated data"""
+    account = db.query(RiotAccount).filter(RiotAccount.id == account_id).first()
+    if not account:
+        raise HTTPException(status_code=404, detail="Riot account not found")
+
+    # Delete associated games
+    db.query(Game).filter(Game.riot_account_id == account_id).delete()
+
+    # Delete associated rank history
+    db.query(RankHistory).filter(RankHistory.riot_account_id == account_id).delete()
+
+    # Delete the account
+    db.delete(account)
+    db.commit()
+    return None
+
+
+@router.patch("/riot-accounts/{account_id}/rank", response_model=RiotAccountResponse, status_code=200)
 async def update_riot_account_rank(
     account_id: int,
     rank_data: dict,

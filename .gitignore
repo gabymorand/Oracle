@@ -73,3 +73,33 @@ frontend/.temp/
 
 # Ensure frontend .env is ignored
 frontend/.env
+
+# Cache files
+.cache/
+*.cache
+.parcel-cache/
+.turbo/
+.nuxt/
+.next/
+.svelte-kit/
+
+# Vite cache (anywhere)
+**/.vite/
+**/node_modules/.vite/
+
+# TypeScript cache
+*.tsbuildinfo
+
+# ESLint/Prettier cache
+.eslintcache
+.prettiercache
+
+# Browser extensions artifacts (Honey, etc.)
+**/honey*/
+**/*honey*
+**/extension-*
+
+# Misc
+*.bak
+*.tmp
+*.temp

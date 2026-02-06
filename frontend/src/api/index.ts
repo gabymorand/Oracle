@@ -1,4 +1,31 @@
-import type { Player, RiotAccount, PlayerNote, Draft, PlayerStats, LaneStats, Coach, TeamHighlights, Game } from '@/types'
+import type {
+  Player,
+  RiotAccount,
+  PlayerNote,
+  Draft,
+  PlayerStats,
+  LaneStats,
+  Coach,
+  TeamHighlights,
+  Game,
+  CalendarEvent,
+  CalendarEventWithSeries,
+  DayAvailabilitySummary,
+  DayDetail,
+  PlayerAvailability,
+  PlayerTierList,
+  ChampionStatsWithScore,
+  TierLevel,
+  OpponentTeam,
+  OpponentTeamWithStats,
+  ScrimReview,
+  ScrimReviewWithTeam,
+  ScoutedPlayer,
+  ScoutedPlayerWithTeam,
+  ScrimHistoryItem,
+  ScrimManagementDashboard,
+  DraftSeriesWithGames,
+} from '@/types'
 import apiClient from './client'
 
 export const authApi = {
@@ -50,6 +77,15 @@ export const draftsApi = {
   delete: (id: number) => apiClient.delete(`/api/v1/drafts/${id}`),
 }
 
+export const draftSeriesApi = {
+  list: (skip = 0, limit = 50) =>
+    apiClient.get<DraftSeriesWithGames[]>(`/api/v1/draft-series?skip=${skip}&limit=${limit}`),
+  listWithGames: (skip = 0, limit = 50) =>
+    apiClient.get<DraftSeriesWithGames[]>(`/api/v1/draft-series/with-games?skip=${skip}&limit=${limit}`),
+  get: (id: number) =>
+    apiClient.get<DraftSeriesWithGames>(`/api/v1/draft-series/${id}`),
+}
+
 export const statsApi = {
   getPlayerStats: (playerId: number) => apiClient.get<PlayerStats>(`/api/v1/stats/player/${playerId}`),
   getLaneStats: (lane: string) => apiClient.get<LaneStats>(`/api/v1/stats/lane/${lane}`),
@@ -62,4 +98,124 @@ export const gamesApi = {
   getPentakills: () => apiClient.get<Game[]>('/api/v1/games/pentakills'),
   updateGameTag: (gameId: number, data: { game_type?: string; is_pentakill?: boolean }) =>
     apiClient.patch<Game>(`/api/v1/games/${gameId}/tag`, data),
+}
+
+export const calendarApi = {
+  // Events
+  getEvents: (year: number, month: number) =>
+    apiClient.get<CalendarEvent[]>(`/api/v1/calendar/events?year=${year}&month=${month}`),
+  getEvent: (id: number) =>
+    apiClient.get<CalendarEventWithSeries>(`/api/v1/calendar/events/${id}`),
+  createEvent: (data: Omit<CalendarEvent, 'id' | 'created_at' | 'updated_at'>) =>
+    apiClient.post<CalendarEvent>('/api/v1/calendar/events', data),
+  updateEvent: (id: number, data: Partial<CalendarEvent>) =>
+    apiClient.patch<CalendarEvent>(`/api/v1/calendar/events/${id}`, data),
+  deleteEvent: (id: number) => apiClient.delete(`/api/v1/calendar/events/${id}`),
+
+  // Availabilities
+  getDayAvailabilities: (date: string) =>
+    apiClient.get<DayAvailabilitySummary>(`/api/v1/calendar/availabilities?date=${date}`),
+  getMonthAvailabilities: (year: number, month: number) =>
+    apiClient.get<DayAvailabilitySummary[]>(
+      `/api/v1/calendar/availabilities/month?year=${year}&month=${month}`
+    ),
+  setPlayerAvailability: (
+    playerId: number,
+    data: { date: string; slot: string; is_available: boolean; note?: string }
+  ) =>
+    apiClient.post<PlayerAvailability>(
+      `/api/v1/calendar/availabilities/player/${playerId}`,
+      data
+    ),
+  setPlayerAvailabilityBulk: (
+    playerId: number,
+    data: Array<{ date: string; slot: string; is_available: boolean; note?: string }>
+  ) =>
+    apiClient.post<PlayerAvailability[]>(
+      `/api/v1/calendar/availabilities/player/${playerId}/bulk`,
+      data
+    ),
+
+  // Day detail (combined view)
+  getDayDetail: (date: string) =>
+    apiClient.get<DayDetail>(`/api/v1/calendar/day?date=${date}`),
+
+  // Scrims
+  getScrims: (limit = 50) =>
+    apiClient.get<CalendarEventWithSeries[]>(`/api/v1/calendar/scrims?limit=${limit}`),
+}
+
+export const tierListApi = {
+  getPlayerTierList: (playerId: number) =>
+    apiClient.get<PlayerTierList>(`/api/v1/tier-list/player/${playerId}`),
+  getPlayerChampionStats: (playerId: number) =>
+    apiClient.get<ChampionStatsWithScore[]>(`/api/v1/tier-list/player/${playerId}/champions`),
+  setChampionTier: (playerId: number, championId: number, tier: TierLevel) =>
+    apiClient.post(`/api/v1/tier-list/player/${playerId}/champion/${championId}`, {
+      champion_id: championId,
+      tier: tier,
+    }),
+  deleteChampionTier: (playerId: number, championId: number) =>
+    apiClient.delete(`/api/v1/tier-list/player/${playerId}/champion/${championId}`),
+}
+
+export const scrimManagementApi = {
+  // Dashboard
+  getDashboard: () =>
+    apiClient.get<ScrimManagementDashboard>('/api/v1/scrim-management/dashboard'),
+  getHistory: (limit = 50) =>
+    apiClient.get<ScrimHistoryItem[]>(`/api/v1/scrim-management/history?limit=${limit}`),
+
+  // Teams
+  getTeams: () =>
+    apiClient.get<OpponentTeam[]>('/api/v1/scrim-management/teams'),
+  getTeamsWithStats: () =>
+    apiClient.get<OpponentTeamWithStats[]>('/api/v1/scrim-management/teams/with-stats'),
+  getTeam: (id: number) =>
+    apiClient.get<OpponentTeamWithStats>(`/api/v1/scrim-management/teams/${id}`),
+  createTeam: (data: Omit<OpponentTeam, 'id' | 'created_at' | 'updated_at'>) =>
+    apiClient.post<OpponentTeam>('/api/v1/scrim-management/teams', data),
+  updateTeam: (id: number, data: Partial<OpponentTeam>) =>
+    apiClient.patch<OpponentTeam>(`/api/v1/scrim-management/teams/${id}`, data),
+  deleteTeam: (id: number) =>
+    apiClient.delete(`/api/v1/scrim-management/teams/${id}`),
+
+  // Reviews
+  getReviews: () =>
+    apiClient.get<ScrimReview[]>('/api/v1/scrim-management/reviews'),
+  getReviewByEvent: (eventId: number) =>
+    apiClient.get<ScrimReviewWithTeam | null>(`/api/v1/scrim-management/reviews/event/${eventId}`),
+  getReview: (id: number) =>
+    apiClient.get<ScrimReviewWithTeam>(`/api/v1/scrim-management/reviews/${id}`),
+  createReview: (data: {
+    calendar_event_id: number
+    opponent_team_id?: number
+    quality: string
+    punctuality?: number
+    communication?: number
+    competitiveness?: number
+    would_scrim_again?: number
+    notes?: string
+  }) =>
+    apiClient.post<ScrimReview>('/api/v1/scrim-management/reviews', data),
+  updateReview: (id: number, data: Partial<ScrimReview>) =>
+    apiClient.patch<ScrimReview>(`/api/v1/scrim-management/reviews/${id}`, data),
+  deleteReview: (id: number) =>
+    apiClient.delete(`/api/v1/scrim-management/reviews/${id}`),
+
+  // Scouted Players
+  getScoutedPlayers: (prospectsOnly = false) =>
+    apiClient.get<ScoutedPlayer[]>(
+      `/api/v1/scrim-management/scouted-players?prospects_only=${prospectsOnly}`
+    ),
+  getScoutedByTeam: (teamId: number) =>
+    apiClient.get<ScoutedPlayer[]>(`/api/v1/scrim-management/scouted-players/team/${teamId}`),
+  getScoutedPlayer: (id: number) =>
+    apiClient.get<ScoutedPlayerWithTeam>(`/api/v1/scrim-management/scouted-players/${id}`),
+  createScoutedPlayer: (data: Omit<ScoutedPlayer, 'id' | 'created_at' | 'updated_at'>) =>
+    apiClient.post<ScoutedPlayer>('/api/v1/scrim-management/scouted-players', data),
+  updateScoutedPlayer: (id: number, data: Partial<ScoutedPlayer>) =>
+    apiClient.patch<ScoutedPlayer>(`/api/v1/scrim-management/scouted-players/${id}`, data),
+  deleteScoutedPlayer: (id: number) =>
+    apiClient.delete(`/api/v1/scrim-management/scouted-players/${id}`),
 }

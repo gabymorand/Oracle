@@ -26,3 +26,5 @@ class Player(Base):
 
     riot_accounts = relationship("RiotAccount", back_populates="player", cascade="all, delete")
     notes = relationship("PlayerNote", back_populates="player", cascade="all, delete")
+    availabilities = relationship("PlayerAvailability", back_populates="player", cascade="all, delete")
+    champion_tiers = relationship("ChampionTier", back_populates="player", cascade="all, delete")

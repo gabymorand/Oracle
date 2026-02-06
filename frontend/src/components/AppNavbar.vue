@@ -67,6 +67,38 @@
           Drafts
         </router-link>
 
+        <!-- Calendar Link -->
+        <router-link
+          to="/calendar"
+          class="text-gray-300 hover:text-white text-sm transition px-3 py-2 rounded hover:bg-gray-700"
+        >
+          Calendrier
+        </router-link>
+
+        <!-- Scrims Link -->
+        <router-link
+          to="/scrims"
+          class="text-gray-300 hover:text-white text-sm transition px-3 py-2 rounded hover:bg-gray-700"
+        >
+          Scrims
+        </router-link>
+
+        <!-- Tier List Link -->
+        <router-link
+          to="/tier-list"
+          class="text-gray-300 hover:text-white text-sm transition px-3 py-2 rounded hover:bg-gray-700"
+        >
+          Tier List
+        </router-link>
+
+        <!-- Analytics Link -->
+        <router-link
+          to="/analytics"
+          class="text-gray-300 hover:text-white text-sm transition px-3 py-2 rounded hover:bg-gray-700"
+        >
+          Analytics
+        </router-link>
+
         <router-link
           to="/sponsors"
           class="text-blue-400 hover:text-blue-300 text-sm transition"

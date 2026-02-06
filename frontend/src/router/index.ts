@@ -53,6 +53,34 @@ const router = createRouter({
       component: () => import('@/views/CoachesManagementView.vue'),
       meta: { requiresAuth: true },
     },
+    {
+      path: '/planning',
+      redirect: { path: '/calendar', query: { tab: 'planning' } },
+    },
+    {
+      path: '/calendar',
+      name: 'calendar',
+      component: () => import('@/views/CalendarView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/scrims',
+      name: 'scrims',
+      component: () => import('@/views/ScrimsView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/tier-list',
+      name: 'tier-list',
+      component: () => import('@/views/TierListView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/analytics',
+      name: 'analytics',
+      component: () => import('@/views/AnalyticsView.vue'),
+      meta: { requiresAuth: true },
+    },
   ],
 })
 

@@ -8,7 +8,24 @@
       "Bash(tasklist:*)",
       "Bash(findstr:*)",
       "Bash(wmic process where \"name like ''%git%''\" get processid,commandline)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(docker-compose exec:*)",
+      "Bash(docker-compose run:*)",
+      "Bash(source:*)",
+      "Bash(pip install:*)",
+      "Bash(venv/Scripts/python.exe -m pip install:*)",
+      "Bash(venv/Scripts/python.exe -m alembic upgrade:*)",
+      "Bash(export DATABASE_URL=\"postgresql://postgres:daukYvuIixafgTeTYQPjkYwIyxlCtzDh@postgres.railway.internal:5432/railway\")",
+      "Bash(export RIOT_API_KEY=\"RGAPI-d2a86206-e625-4b2a-b9ce-d65e49af1e90\")",
+      "Bash(export ACCESS_CODE=\"oracle2026\":*)",
+      "Bash(export JWT_SECRET=\"zY7FA1jLYeJWlNCyHixBo33_qeShbuiwOJVsLOkK17g\")",
+      "Bash(export DATABASE_URL=\"sqlite:///./test.db\")",
+      "Bash(venv/Scripts/python.exe:*)",
+      "Bash(docker-compose logs:*)",
+      "Bash(timeout 60 tail:*)",
+      "Bash(python -m alembic:*)",
+      "Bash(\"c:\\\\Users\\\\gabri\\\\Documents\\\\TSC\\\\.venv\\\\Scripts\\\\alembic.exe\" upgrade head)",
+      "Bash(/c/Users/gabri/Documents/TSC/.venv/Scripts/python.exe -c \"from alembic.config import Config; from alembic import command; cfg = Config\\(''alembic.ini''\\); command.upgrade\\(cfg, ''head''\\)\")"
     ]
   }
 }

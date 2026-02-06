@@ -38,6 +38,76 @@ async def import_draft(request: DraftImportRequest):
     return DraftImportResponse(**result)
 
 
+class DraftImportDebugResponse(BaseModel):
+    url: str
+    api_responses: list[dict]
+    html_sample: Optional[str] = None
+    parsed_result: Optional[dict] = None
+    error: Optional[str] = None
+
+
+@router.post("/import/debug")
+async def debug_draft_import(request: DraftImportRequest):
+    """Debug endpoint to see what happens when importing a draft"""
+    import httpx
+    from urllib.parse import urlparse
+
+    debug_info = {
+        "url": request.url,
+        "api_responses": [],
+        "html_sample": None,
+        "parsed_result": None,
+        "error": None,
+    }
+
+    try:
+        parsed = urlparse(request.url)
+        path_parts = [p for p in parsed.path.strip("/").split("/") if p]
+        draft_id = path_parts[0] if path_parts else None
+
+        debug_info["draft_id"] = draft_id
+
+        async with httpx.AsyncClient() as client:
+            # Try various API endpoints
+            api_urls = [
+                f"https://draftlol.dawe.gg/api/{draft_id}",
+                f"https://draftlol.dawe.gg/api/draft/{draft_id}",
+                f"https://draftlol.dawe.gg/api/drafts/{draft_id}",
+                f"https://draftlol.dawe.gg/api/room/{draft_id}",
+            ]
+
+            for api_url in api_urls:
+                try:
+                    response = await client.get(api_url, timeout=10.0)
+                    debug_info["api_responses"].append({
+                        "url": api_url,
+                        "status": response.status_code,
+                        "content_type": response.headers.get("content-type", "unknown"),
+                        "body_preview": response.text[:500] if response.text else None,
+                    })
+                except Exception as e:
+                    debug_info["api_responses"].append({
+                        "url": api_url,
+                        "error": str(e),
+                    })
+
+            # Try to fetch the page itself
+            try:
+                page_response = await client.get(request.url, timeout=10.0)
+                debug_info["html_sample"] = page_response.text[:2000] if page_response.text else None
+            except Exception as e:
+                debug_info["html_error"] = str(e)
+
+        # Try the actual import
+        result = await import_draft_from_url(request.url, request.is_blue_side)
+        debug_info["parsed_result"] = result
+
+    except Exception as e:
+        debug_info["error"] = str(e)
+
+    return debug_info
+
+
 def update_series_scores(db: Session, series: DraftSeries):
     """Recalculate series scores based on game results"""
     our_score = 0
@@ -110,6 +180,23 @@ async def list_draft_series(
         result.append(DraftSeriesListResponse(**series_dict))
 
     return result
+
+
+@router.get("/with-games", response_model=list[DraftSeriesResponse])
+async def list_draft_series_with_games(
+    skip: int = 0,
+    limit: int = 50,
+    db: Session = Depends(get_db)
+):
+    """List all draft series with their games included"""
+    series_list = (
+        db.query(DraftSeries)
+        .order_by(DraftSeries.date.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+    return series_list
 
 
 @router.post("", response_model=DraftSeriesResponse)
