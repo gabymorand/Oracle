@@ -202,6 +202,30 @@ export const scrimManagementApi = {
     apiClient.patch<ScrimReview>(`/api/v1/scrim-management/reviews/${id}`, data),
   deleteReview: (id: number) =>
     apiClient.delete(`/api/v1/scrim-management/reviews/${id}`),
+  createOrUpdateReview: async (eventId: number, data: {
+    quality: string
+    opponent_team_id?: number
+    punctuality?: number
+    communication?: number
+    competitiveness?: number
+    would_scrim_again?: number
+    notes?: string
+  }) => {
+    // Check if review exists for this event
+    try {
+      const existing = await apiClient.get<ScrimReviewWithTeam>(`/api/v1/scrim-management/reviews/event/${eventId}`)
+      if (existing.data && existing.data.id) {
+        // Update existing review
+        return apiClient.patch<ScrimReview>(`/api/v1/scrim-management/reviews/${existing.data.id}`, data)
+      }
+    } catch {
+      // No existing review, create new one
+    }
+    return apiClient.post<ScrimReview>('/api/v1/scrim-management/reviews', {
+      calendar_event_id: eventId,
+      ...data,
+    })
+  },
 
   // Scouted Players
   getScoutedPlayers: (prospectsOnly = false) =>

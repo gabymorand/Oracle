@@ -1,4 +1,12 @@
+from pathlib import Path
+
 from pydantic_settings import BaseSettings
+
+# Find .env file - try both backend/.env and project root .env
+_backend_dir = Path(__file__).parent.parent
+_env_file = _backend_dir / ".env"
+if not _env_file.exists():
+    _env_file = _backend_dir.parent / ".env"
 
 
 class Settings(BaseSettings):
@@ -12,8 +20,9 @@ class Settings(BaseSettings):
     jwt_expiration_hours: int = 720  # 30 days
 
     class Config:
-        env_file = ".env"
+        env_file = str(_env_file)
         case_sensitive = False
+        extra = "ignore"  # Ignore extra env vars like VITE_*, POSTGRES_*
 
 
 settings = Settings()

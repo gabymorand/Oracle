@@ -25,7 +25,16 @@
       "Bash(timeout 60 tail:*)",
       "Bash(python -m alembic:*)",
       "Bash(\"c:\\\\Users\\\\gabri\\\\Documents\\\\TSC\\\\.venv\\\\Scripts\\\\alembic.exe\" upgrade head)",
-      "Bash(/c/Users/gabri/Documents/TSC/.venv/Scripts/python.exe -c \"from alembic.config import Config; from alembic import command; cfg = Config\\(''alembic.ini''\\); command.upgrade\\(cfg, ''head''\\)\")"
+      "Bash(/c/Users/gabri/Documents/TSC/.venv/Scripts/python.exe -c \"from alembic.config import Config; from alembic import command; cfg = Config\\(''alembic.ini''\\); command.upgrade\\(cfg, ''head''\\)\")",
+      "Bash(/c/Users/gabri/Documents/TSC/.venv/Scripts/pip.exe list:*)",
+      "Bash(/c/Users/gabri/Documents/TSC/.venv/Scripts/pip.exe install:*)",
+      "Bash(/c/Users/gabri/Documents/TSC/.venv/Scripts/alembic upgrade:*)",
+      "Bash(/c/Users/gabri/Documents/TSC/.venv/Scripts/alembic:*)",
+      "Bash(docker-compose up:*)",
+      "Bash(DATABASE_URL=\"postgresql://oracle_user:oracle_password@localhost:5432/oracle_db\" /c/Users/gabri/Documents/TSC/.venv/Scripts/alembic upgrade head:*)",
+      "Bash(timeout:*)",
+      "Bash(curl:*)",
+      "Bash(npx vue-tsc:*)"
     ]
   }
 }

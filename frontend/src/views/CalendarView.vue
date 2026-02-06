@@ -344,10 +344,10 @@
                 {{ formatGameTime(game.created_at) }}
               </span>
 
-              <!-- Champion Icons (ally picks) -->
+              <!-- Champion Icons (our picks) -->
               <div class="flex items-center gap-1">
                 <img
-                  v-for="(pick, idx) in (game.ally_picks || []).slice(0, 5)"
+                  v-for="(pick, idx) in (game.our_picks || []).slice(0, 5)"
                   :key="idx"
                   :src="getChampionIconUrl(pick)"
                   :alt="getChampionName(pick)"
@@ -965,8 +965,8 @@
               <h3 class="text-xl font-semibold">
                 Game {{ selectedGameDetail.game.game_number || 1 }}
               </h3>
-              <p v-if="selectedGameDetail.series.opponent_team" class="text-gray-400 text-sm">
-                vs {{ selectedGameDetail.series.opponent_team }}
+              <p v-if="selectedGameDetail.series.opponent_name" class="text-gray-400 text-sm">
+                vs {{ selectedGameDetail.series.opponent_name }}
               </p>
             </div>
           </div>
@@ -987,13 +987,10 @@
             <span
               :class="[
                 'px-3 py-1 rounded font-medium',
-                selectedGameDetail.game.side === 'blue' ? 'bg-blue-600 text-white' : 'bg-red-600 text-white'
+                selectedGameDetail.game.blue_side ? 'bg-blue-600 text-white' : 'bg-red-600 text-white'
               ]"
             >
-              {{ selectedGameDetail.game.side === 'blue' ? 'Blue Side' : 'Red Side' }}
-            </span>
-            <span v-if="selectedGameDetail.game.duration" class="text-gray-400">
-              Duree: {{ Math.floor((selectedGameDetail.game.duration || 0) / 60) }}:{{ String((selectedGameDetail.game.duration || 0) % 60).padStart(2, '0') }}
+              {{ selectedGameDetail.game.blue_side ? 'Blue Side' : 'Red Side' }}
             </span>
           </div>
 
@@ -1005,12 +1002,12 @@
             </h4>
 
             <!-- Bans -->
-            <div v-if="selectedGameDetail.game.ally_bans && selectedGameDetail.game.ally_bans.length > 0" class="mb-4">
+            <div v-if="selectedGameDetail.game.our_bans && selectedGameDetail.game.our_bans.length > 0" class="mb-4">
               <p class="text-xs text-gray-400 mb-2">BANS</p>
               <div class="flex gap-2">
                 <div
-                  v-for="(ban, idx) in selectedGameDetail.game.ally_bans"
-                  :key="'ally-ban-' + idx"
+                  v-for="(ban, idx) in selectedGameDetail.game.our_bans"
+                  :key="'our-ban-' + idx"
                   class="relative"
                 >
                   <img
@@ -1032,8 +1029,8 @@
               <p class="text-xs text-gray-400 mb-2">PICKS</p>
               <div class="flex gap-3">
                 <div
-                  v-for="(pick, idx) in (selectedGameDetail.game.ally_picks || [])"
-                  :key="'ally-pick-' + idx"
+                  v-for="(pick, idx) in (selectedGameDetail.game.our_picks || [])"
+                  :key="'our-pick-' + idx"
                   class="flex flex-col items-center gap-1"
                 >
                   <img
@@ -1050,7 +1047,7 @@
             </div>
           </div>
 
-          <!-- Enemy Team Draft -->
+          <!-- Opponent Team Draft -->
           <div class="bg-gray-700/50 rounded-lg p-4">
             <h4 class="text-lg font-medium mb-3 flex items-center gap-2">
               <span class="w-3 h-3 rounded-full bg-red-500"></span>
@@ -1058,12 +1055,12 @@
             </h4>
 
             <!-- Bans -->
-            <div v-if="selectedGameDetail.game.enemy_bans && selectedGameDetail.game.enemy_bans.length > 0" class="mb-4">
+            <div v-if="selectedGameDetail.game.opponent_bans && selectedGameDetail.game.opponent_bans.length > 0" class="mb-4">
               <p class="text-xs text-gray-400 mb-2">BANS</p>
               <div class="flex gap-2">
                 <div
-                  v-for="(ban, idx) in selectedGameDetail.game.enemy_bans"
-                  :key="'enemy-ban-' + idx"
+                  v-for="(ban, idx) in selectedGameDetail.game.opponent_bans"
+                  :key="'opponent-ban-' + idx"
                   class="relative"
                 >
                   <img
@@ -1085,8 +1082,8 @@
               <p class="text-xs text-gray-400 mb-2">PICKS</p>
               <div class="flex gap-3">
                 <div
-                  v-for="(pick, idx) in (selectedGameDetail.game.enemy_picks || [])"
-                  :key="'enemy-pick-' + idx"
+                  v-for="(pick, idx) in (selectedGameDetail.game.opponent_picks || [])"
+                  :key="'opponent-pick-' + idx"
                   class="flex flex-col items-center gap-1"
                 >
                   <img
@@ -1130,7 +1127,7 @@ import { useRouter, useRoute } from 'vue-router'
 import AppNavbar from '@/components/AppNavbar.vue'
 import { useAuthStore } from '@/stores/auth'
 import { calendarApi, playersApi, draftSeriesApi } from '@/api'
-import { getChampionIconUrl, getChampionName } from '@/utils/champions'
+import { getChampionIconUrl, getChampionName, loadChampionData } from '@/utils/champions'
 import type {
   CalendarEvent,
   CalendarEventWithSeries,
@@ -1828,6 +1825,7 @@ onMounted(() => {
   if (route.query.tab === 'planning') {
     activeTab.value = 'planning'
   }
+  loadChampionData() // Load champion names for display
   loadMonthData()
   loadPlanningData()
 })
