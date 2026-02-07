@@ -97,6 +97,14 @@
                 </div>
                 <div v-if="authStore.userRole !== 'player'" class="flex gap-2">
                   <button
+                    v-if="!account.is_main"
+                    @click="setMainAccount(account.id)"
+                    class="bg-yellow-600 hover:bg-yellow-700 px-3 py-1 rounded text-sm transition"
+                    title="Definir comme compte principal"
+                  >
+                    Set Main
+                  </button>
+                  <button
                     @click="refreshStats(account.id)"
                     :disabled="refreshingAccounts.has(account.id)"
                     class="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:cursor-not-allowed px-3 py-1 rounded text-sm transition flex items-center gap-2"
@@ -184,15 +192,26 @@
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div class="bg-gray-800 rounded-lg p-6">
             <h2 class="text-xl font-semibold mb-4">Stats</h2>
-            <div v-if="stats" class="space-y-2">
-              <div class="flex justify-between">
-                <span class="text-gray-400">Games:</span>
-                <span>{{ stats.total_games }}</span>
+            <div v-if="stats" class="space-y-3">
+              <!-- Ranked Season Totals (all accounts combined) -->
+              <div v-if="stats.ranked_wins + stats.ranked_losses > 0" class="bg-gray-700/50 rounded-lg p-3 mb-2">
+                <div class="text-xs text-gray-400 uppercase mb-2">Ranked (tous comptes)</div>
+                <div class="flex items-center gap-3">
+                  <span class="text-lg font-bold">
+                    <span class="text-green-400">{{ stats.ranked_wins }}W</span>
+                    <span class="text-gray-500 mx-1">-</span>
+                    <span class="text-red-400">{{ stats.ranked_losses }}L</span>
+                  </span>
+                  <span
+                    class="text-lg font-bold ml-auto"
+                    :class="stats.ranked_winrate >= 50 ? 'text-green-400' : 'text-red-400'"
+                  >
+                    {{ stats.ranked_winrate }}%
+                  </span>
+                </div>
               </div>
-              <div class="flex justify-between">
-                <span class="text-gray-400">Winrate:</span>
-                <span>{{ stats.winrate }}%</span>
-              </div>
+              <!-- Per-game averages (from stored match history) -->
+              <div class="text-xs text-gray-400 uppercase">Moyennes ({{ stats.total_games }} games analysees)</div>
               <div class="flex justify-between">
                 <span class="text-gray-400">KDA:</span>
                 <span>{{ stats.avg_kda }}</span>
@@ -624,6 +643,18 @@ async function addRiotAccount() {
     console.error('Failed to add Riot account:', error)
     const errorMsg = error.response?.data?.detail || 'Failed to add Riot account. Please check the summoner name and tag.'
     alert(errorMsg)
+  }
+}
+
+async function setMainAccount(accountId: number) {
+  if (!player.value) return
+  try {
+    await riotAccountsApi.setMain(accountId)
+    const playerRes = await playersApi.get(player.value.id)
+    player.value = playerRes.data
+  } catch (error) {
+    console.error('Failed to set main account:', error)
+    alert('Erreur lors du changement de compte principal')
   }
 }
 

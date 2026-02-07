@@ -806,6 +806,27 @@
             <p class="text-xs text-gray-500 mt-1">Separes par des virgules</p>
           </div>
 
+          <div v-if="newEvent.event_type === 'scrim' || newEvent.event_type === 'official_match'">
+            <label class="block text-sm font-medium mb-1">Format</label>
+            <div class="flex gap-2">
+              <button
+                type="button"
+                v-for="fmt in ['bo1', 'bo3', 'bo5']"
+                :key="fmt"
+                @click="newEvent.series_format = fmt"
+                :class="[
+                  'flex-1 py-2 rounded uppercase font-semibold transition',
+                  newEvent.series_format === fmt
+                    ? 'bg-blue-600'
+                    : 'bg-gray-700 hover:bg-gray-600',
+                ]"
+              >
+                {{ fmt }}
+              </button>
+            </div>
+            <p class="text-xs text-gray-500 mt-1">Une serie Draft sera creee automatiquement</p>
+          </div>
+
           <div>
             <label class="block text-sm font-medium mb-1">Description</label>
             <textarea
@@ -948,17 +969,28 @@
         </div>
 
         <div class="flex justify-between gap-3">
-          <button
-            v-if="selectedEvent.event_type === 'scrim'"
-            @click="goToScrimDetail"
-            class="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg transition flex items-center gap-2"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-            </svg>
-            Gerer Scrim
-          </button>
-          <div v-else></div>
+          <div class="flex gap-2">
+            <button
+              v-if="selectedEvent.event_type === 'scrim'"
+              @click="goToScrimDetail"
+              class="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg transition flex items-center gap-2"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+              Gerer Scrim
+            </button>
+            <button
+              v-if="(selectedEvent.event_type === 'scrim' || selectedEvent.event_type === 'official_match') && selectedEvent.draft_series_id"
+              @click="goToDraft"
+              class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition flex items-center gap-2"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Voir Draft
+            </button>
+          </div>
           <div class="flex gap-3">
             <button
               @click="deleteEventConfirm"
@@ -1142,7 +1174,18 @@
         </div>
 
         <!-- Footer -->
-        <div class="sticky bottom-0 bg-gray-800 border-t border-gray-700 p-4 flex justify-end">
+        <div class="sticky bottom-0 bg-gray-800 border-t border-gray-700 p-4 flex justify-between">
+          <button
+            v-if="selectedGameDetail.game.has_match_data"
+            @click="viewMatchStats(selectedGameDetail.game, selectedGameDetail.series)"
+            class="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg transition flex items-center gap-2"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+            Voir Stats
+          </button>
+          <div v-else></div>
           <button
             @click="selectedGameDetail = null"
             class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition"
@@ -1153,6 +1196,14 @@
       </div>
     </div>
   </div>
+
+  <!-- Match Stats Modal -->
+  <GameDetailModal
+    v-if="viewingMatchDetails"
+    :game-id="null"
+    :external-match-data="viewingMatchDetails"
+    @close="viewingMatchDetails = null"
+  />
 </template>
 
 <script setup lang="ts">
@@ -1161,7 +1212,9 @@ import { useRouter, useRoute } from 'vue-router'
 import AppNavbar from '@/components/AppNavbar.vue'
 import { useAuthStore } from '@/stores/auth'
 import { calendarApi, playersApi, draftSeriesApi } from '@/api'
+import { apiClient } from '@/api/client'
 import { getChampionIconUrl, getChampionName, loadChampionData } from '@/utils/champions'
+import GameDetailModal from '@/components/GameDetailModal.vue'
 import type {
   CalendarEvent,
   CalendarEventWithSeries,
@@ -1172,6 +1225,7 @@ import type {
   Player,
   DraftSeriesWithGames,
   DraftGame,
+  MatchDetailResponse,
 } from '@/types'
 
 const authStore = useAuthStore()
@@ -1203,6 +1257,7 @@ const selectedDate = ref<string | null>(null)
 const selectedDayDetail = ref<DayDetail | null>(null)
 const selectedEvent = ref<CalendarEvent | null>(null)
 const selectedGameDetail = ref<{ game: DraftGame; series: DraftSeriesWithGames } | null>(null)
+const viewingMatchDetails = ref<MatchDetailResponse | null>(null)
 const showCreateEvent = ref(false)
 const loading = ref(true)
 const creatingEvent = ref(false)
@@ -1227,6 +1282,7 @@ const newEvent = ref({
   description: '',
   location: '',
   sendInvitation: false,
+  series_format: 'bo1',
 })
 
 // Computed
@@ -1371,6 +1427,17 @@ function getGamesForSelectedDay(): Array<{ game: DraftGame; series: DraftSeriesW
 
 function openGameDetail(game: DraftGame, series: DraftSeriesWithGames) {
   selectedGameDetail.value = { game, series }
+}
+
+async function viewMatchStats(game: DraftGame, series: DraftSeriesWithGames) {
+  try {
+    const response = await apiClient.get(
+      `/api/v1/draft-series/${series.id}/games/${game.id}/match-details`
+    )
+    viewingMatchDetails.value = response.data
+  } catch (error) {
+    console.error('Failed to load match details:', error)
+  }
 }
 
 function formatGameTime(dateStr: string): string {
@@ -1572,6 +1639,15 @@ function goToScrimDetail() {
   })
 }
 
+function goToDraft() {
+  if (!selectedEvent.value?.draft_series_id) return
+  router.push({
+    path: '/drafts',
+    query: { series_id: selectedEvent.value.draft_series_id.toString() }
+  })
+  selectedEvent.value = null
+}
+
 async function createEvent() {
   creatingEvent.value = true
   try {
@@ -1584,6 +1660,7 @@ async function createEvent() {
       opponent_players: newEvent.value.opponent_players || undefined,
       description: newEvent.value.description || undefined,
       location: newEvent.value.location || undefined,
+      series_format: newEvent.value.series_format,
     }
     const shouldSendInvitation = newEvent.value.sendInvitation
     const response = await calendarApi.createEvent(eventData)
@@ -1617,6 +1694,7 @@ async function createEvent() {
       description: '',
       location: '',
       sendInvitation: false,
+      series_format: 'bo1',
     }
     await loadMonthData()
     // Refresh selected day if it matches

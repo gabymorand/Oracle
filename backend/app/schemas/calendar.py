@@ -83,7 +83,7 @@ class CalendarEventBase(BaseModel):
 
 
 class CalendarEventCreate(CalendarEventBase):
-    pass
+    series_format: Optional[str] = "bo1"  # Used when auto-creating a DraftSeries for scrims
 
 
 class CalendarEventUpdate(BaseModel):

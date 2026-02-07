@@ -64,6 +64,37 @@ async def delete_riot_account(
     return None
 
 
+@router.patch("/riot-accounts/{account_id}/set-main", response_model=RiotAccountResponse)
+async def set_main_account(
+    account_id: int,
+    db: Session = Depends(get_db),
+    team_ctx: TeamContext = Depends(get_current_team),
+):
+    """Set a riot account as the main account, unsetting all others for the same player."""
+    account = (
+        db.query(RiotAccount)
+        .join(Player)
+        .filter(
+            RiotAccount.id == account_id,
+            Player.team_id == team_ctx.team_id,
+        )
+        .first()
+    )
+    if not account:
+        raise HTTPException(status_code=404, detail="Riot account not found")
+
+    # Unset all other accounts for this player
+    db.query(RiotAccount).filter(
+        RiotAccount.player_id == account.player_id,
+        RiotAccount.id != account_id,
+    ).update({"is_main": False})
+
+    account.is_main = True
+    db.commit()
+    db.refresh(account)
+    return account
+
+
 @router.patch("/riot-accounts/{account_id}/rank", response_model=RiotAccountResponse, status_code=200)
 async def update_riot_account_rank(
     account_id: int,

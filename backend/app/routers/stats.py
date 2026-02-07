@@ -1,4 +1,5 @@
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
@@ -322,6 +323,9 @@ async def get_team_activity(
             player.riot_accounts[0] if player.riot_accounts else None,
         )
 
+        # Build set of main account IDs for smurf detection
+        main_account_ids = {main_account.id} if main_account else set()
+
         # Get all games for this player's accounts within the week
         riot_account_ids = [acc.id for acc in player.riot_accounts]
         if not riot_account_ids:
@@ -360,14 +364,22 @@ async def get_team_activity(
         player_scrims = 0
         player_soloq = 0
 
+        # Paris timezone for display
+        paris_tz = ZoneInfo("Europe/Paris")
+
         for game in games:
-            day_key = game.game_date.strftime("%Y-%m-%d")
+            # Convert UTC game_date to Paris timezone
+            game_date_utc = game.game_date.replace(tzinfo=timezone.utc)
+            game_date_paris = game_date_utc.astimezone(paris_tz)
+            game_end_paris = (game_date_utc + timedelta(seconds=game.game_duration)).astimezone(paris_tz)
+
+            day_key = game_date_paris.strftime("%Y-%m-%d")
             if day_key not in games_by_day:
                 games_by_day[day_key] = []
 
-            # Calculate start and end time
-            start_time = game.game_date.strftime("%H:%M")
-            end_time = (game.game_date + timedelta(seconds=game.game_duration)).strftime("%H:%M")
+            # Calculate start and end time in Paris timezone
+            start_time = game_date_paris.strftime("%H:%M")
+            end_time = game_end_paris.strftime("%H:%M")
 
             activity_game = ActivityGame(
                 id=game.id,
@@ -382,6 +394,7 @@ async def get_team_activity(
                 game_duration=game.game_duration,
                 start_time=start_time,
                 end_time=end_time,
+                is_smurf=game.riot_account_id not in main_account_ids,
             )
             games_by_day[day_key].append(activity_game)
 

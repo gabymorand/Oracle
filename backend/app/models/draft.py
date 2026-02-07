@@ -65,8 +65,9 @@ class DraftGame(Base):
     result = Column(String, nullable=True)  # win/loss
 
     # Import metadata
-    import_source = Column(String, nullable=True)  # 'manual', 'image', 'draftlol_link'
+    import_source = Column(String, nullable=True)  # 'manual', 'image', 'draftlol_link', 'match_json'
     import_url = Column(String, nullable=True)  # Original URL if imported from link
+    match_data = Column(JSON, nullable=True)  # Full Riot match V5 JSON for imported games
 
     notes = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)

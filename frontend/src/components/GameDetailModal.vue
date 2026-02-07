@@ -6,6 +6,7 @@ import { getChampionIcon, getChampionName, getSummonerSpellIcon, getItemIcon, ge
 
 interface Props {
   gameId: number | null
+  externalMatchData?: MatchDetailResponse | null
 }
 
 const props = defineProps<Props>()
@@ -17,10 +18,18 @@ const loading = ref(false)
 const error = ref<string | null>(null)
 const matchData = ref<MatchDetailResponse | null>(null)
 
-// Load match data when gameId changes
+// Load match data when gameId changes or external data is provided
 watch(
-  () => props.gameId,
-  async (newGameId) => {
+  () => [props.gameId, props.externalMatchData] as const,
+  async ([newGameId, newExternalData]) => {
+    // If external data is provided, use it directly
+    if (newExternalData) {
+      matchData.value = newExternalData
+      loading.value = false
+      error.value = null
+      return
+    }
+
     if (!newGameId) {
       matchData.value = null
       return
@@ -101,8 +110,8 @@ function handleBackdropClick(e: MouseEvent) {
 <template>
   <Teleport to="body">
     <div
-      v-if="gameId !== null"
-      class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+      v-if="gameId !== null || externalMatchData"
+      class="fixed inset-0 bg-black/70 flex items-center justify-center z-[70] p-4"
       @click="handleBackdropClick"
     >
       <div class="bg-gray-800 rounded-lg shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-y-auto">

@@ -14,6 +14,10 @@ class PlayerStats(BaseModel):
     avg_vision_score_per_min: float
     avg_kill_participation: float
     winrate: float
+    # Ranked season totals (combined across all accounts)
+    ranked_wins: int = 0
+    ranked_losses: int = 0
+    ranked_winrate: float = 0.0
 
 
 class LaneStats(BaseModel):
@@ -89,6 +93,7 @@ class ActivityGame(BaseModel):
     game_duration: int
     start_time: str  # HH:MM format
     end_time: str  # HH:MM format
+    is_smurf: bool = False  # True if game is from a non-main account
 
 
 class ChampionMatchup(BaseModel):

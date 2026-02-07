@@ -146,24 +146,38 @@
               </svg>
               Stats Equipe
             </h2>
-            <div v-if="teamHighlights" class="grid grid-cols-2 gap-4">
-              <div class="bg-gray-700/50 rounded-lg p-4">
-                <div class="text-3xl font-bold text-blue-400">{{ teamHighlights.total_games }}</div>
-                <div class="text-sm text-gray-400">Games totales</div>
-              </div>
-              <div class="bg-gray-700/50 rounded-lg p-4">
-                <div class="text-3xl font-bold" :class="teamHighlights.winrate >= 50 ? 'text-green-400' : 'text-red-400'">
-                  {{ teamHighlights.winrate.toFixed(1) }}%
+            <div v-if="teamHighlights" class="space-y-4">
+              <!-- Total LP Banner -->
+              <div v-if="teamTotalLp > 0" class="bg-gradient-to-r from-yellow-600/20 to-amber-600/20 border border-yellow-600/30 rounded-lg p-4 flex items-center gap-4">
+                <div class="w-12 h-12 rounded-lg bg-yellow-500/20 flex items-center justify-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                  </svg>
                 </div>
-                <div class="text-sm text-gray-400">Winrate SoloQ</div>
+                <div>
+                  <div class="text-3xl font-bold text-yellow-400">{{ teamTotalLp.toLocaleString() }} LP</div>
+                  <div class="text-sm text-gray-400">Total LP Equipe (SoloQ)</div>
+                </div>
               </div>
-              <div class="bg-gray-700/50 rounded-lg p-4">
-                <div class="text-3xl font-bold text-purple-400">{{ teamHighlights.competitive_games }}</div>
-                <div class="text-sm text-gray-400">Games Compet</div>
-              </div>
-              <div class="bg-gray-700/50 rounded-lg p-4">
-                <div class="text-3xl font-bold text-yellow-400">{{ teamHighlights.total_pentakills }}</div>
-                <div class="text-sm text-gray-400">Pentakills</div>
+              <div class="grid grid-cols-2 gap-4">
+                <div class="bg-gray-700/50 rounded-lg p-4">
+                  <div class="text-3xl font-bold text-blue-400">{{ teamHighlights.total_games }}</div>
+                  <div class="text-sm text-gray-400">Games totales</div>
+                </div>
+                <div class="bg-gray-700/50 rounded-lg p-4">
+                  <div class="text-3xl font-bold" :class="teamHighlights.winrate >= 50 ? 'text-green-400' : 'text-red-400'">
+                    {{ teamHighlights.winrate.toFixed(1) }}%
+                  </div>
+                  <div class="text-sm text-gray-400">Winrate SoloQ</div>
+                </div>
+                <div class="bg-gray-700/50 rounded-lg p-4">
+                  <div class="text-3xl font-bold text-purple-400">{{ teamHighlights.competitive_games }}</div>
+                  <div class="text-sm text-gray-400">Games Compet</div>
+                </div>
+                <div class="bg-gray-700/50 rounded-lg p-4">
+                  <div class="text-3xl font-bold text-yellow-400">{{ teamHighlights.total_pentakills }}</div>
+                  <div class="text-sm text-gray-400">Pentakills</div>
+                </div>
               </div>
             </div>
             <div v-else class="text-gray-500 text-center py-8">
@@ -372,7 +386,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { playersApi, statsApi, coachesApi } from '@/api'
@@ -450,6 +464,18 @@ function getRoleEmoji(role: string): string {
   }
   return emojis[role.toLowerCase()] || '👤'
 }
+
+const teamTotalLp = computed(() => {
+  let total = 0
+  const masterPlus = ['MASTER', 'GRANDMASTER', 'CHALLENGER']
+  for (const player of players.value) {
+    const main = player.riot_accounts.find((a) => a.is_main) || player.riot_accounts[0]
+    if (main?.rank_tier && masterPlus.includes(main.rank_tier.toUpperCase())) {
+      total += main.lp || 0
+    }
+  }
+  return total
+})
 
 function navigateToPlayer(player: Player | undefined) {
   if (player) {

@@ -477,6 +477,13 @@
                   {{ game.result }}
                 </span>
                 <button
+                  v-if="game.has_match_data"
+                  @click="viewMatchDetails(game)"
+                  class="text-purple-400 hover:text-purple-300 text-sm font-medium"
+                >
+                  Details
+                </button>
+                <button
                   @click="editGame(game)"
                   class="text-blue-400 hover:text-blue-300 text-sm"
                 >
@@ -606,7 +613,9 @@
     <!-- Add Game Modal -->
     <div v-if="showAddGame && selectedSeries" class="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] overflow-y-auto">
       <div class="bg-gray-800 rounded-lg p-6 w-full max-w-2xl my-8 mx-4">
-        <h2 class="text-xl font-semibold mb-4">Ajouter Game {{ (selectedSeries.games?.length || 0) + 1 }}</h2>
+        <h2 class="text-xl font-semibold mb-4">
+          {{ editingGameId ? 'Modifier Game' : `Ajouter Game ${(selectedSeries.games?.length || 0) + 1}` }}
+        </h2>
         <form @submit.prevent="addGame" class="space-y-4">
           <div class="grid grid-cols-2 gap-4">
             <div>
@@ -661,34 +670,70 @@
             </div>
           </div>
 
-          <!-- Import Section -->
+          <!-- Import Match JSON Section -->
           <div class="bg-gray-700 rounded-lg p-4">
-            <h3 class="font-semibold mb-3">Importer Draft</h3>
-            <div class="flex gap-2">
+            <h3 class="font-semibold mb-3">Importer Match JSON</h3>
+
+            <!-- Drop zone -->
+            <div
+              @dragover.prevent="matchJsonDragOver = true"
+              @dragleave.prevent="matchJsonDragOver = false"
+              @drop.prevent="handleFileDrop"
+              :class="[
+                'border-2 border-dashed rounded-lg p-4 text-center transition cursor-pointer mb-3',
+                matchJsonDragOver
+                  ? 'border-green-400 bg-green-900/20'
+                  : matchJsonFileName
+                    ? 'border-green-500 bg-green-900/10'
+                    : 'border-gray-500 hover:border-gray-400'
+              ]"
+              @click="($refs.fileInput as HTMLInputElement)?.click()"
+            >
               <input
-                v-model="importUrl"
-                type="url"
-                placeholder="https://draftlol.dawe.gg/draft/..."
-                class="flex-1 px-3 py-2 bg-gray-600 rounded border border-gray-500"
+                ref="fileInput"
+                type="file"
+                accept=".json"
+                class="hidden"
+                @change="handleFileSelect"
               />
+              <div v-if="matchJsonFileName" class="text-green-400">
+                <span class="text-lg">&#10003;</span> {{ matchJsonFileName }}
+                <p class="text-xs text-gray-400 mt-1">Cliquer ou glisser un autre fichier pour remplacer</p>
+              </div>
+              <div v-else class="text-gray-400">
+                <p class="text-sm">Glisser un fichier .json ici ou cliquer pour parcourir</p>
+                <p class="text-xs mt-1">Format: export custom game Riot</p>
+              </div>
+            </div>
+
+            <!-- Or paste JSON manually -->
+            <details class="mb-3">
+              <summary class="text-xs text-gray-400 cursor-pointer hover:text-gray-300">
+                Ou coller le JSON manuellement
+              </summary>
+              <textarea
+                v-model="matchJsonText"
+                placeholder="Coller le JSON du match ici..."
+                class="w-full px-3 py-2 bg-gray-600 rounded border border-gray-500 text-sm font-mono mt-2"
+                rows="3"
+              ></textarea>
+            </details>
+
+            <div class="flex items-center gap-2">
               <button
                 type="button"
-                @click="importDraft"
-                :disabled="!importUrl || importing"
-                class="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded transition disabled:opacity-50 disabled:cursor-not-allowed"
+                @click="importMatchJson"
+                :disabled="(!matchJsonText.trim() && !matchJsonFileName) || matchJsonImporting"
+                class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded transition disabled:opacity-50 disabled:cursor-not-allowed text-sm"
               >
-                {{ importing ? 'Import...' : 'Importer' }}
+                {{ matchJsonImporting ? 'Import...' : 'Importer le Match' }}
               </button>
+              <p class="text-xs text-gray-400">Picks auto-detectes. Choisissez side et resultat ci-dessus, bans ci-dessous.</p>
             </div>
-            <p v-if="importError" class="text-xs text-red-400 mt-1">{{ importError }}</p>
-            <p v-else-if="importSuccess" class="text-xs text-green-400 mt-1">{{ importSuccess }}</p>
-            <p v-else class="text-xs text-gray-400 mt-1">Coller un lien draftlol.dawe.gg pour remplir automatiquement</p>
+            <p v-if="matchJsonError" class="text-xs text-red-400 mt-1">{{ matchJsonError }}</p>
           </div>
 
-          <!-- Manual Entry -->
-          <div class="text-sm text-gray-400 text-center">- ou saisir manuellement -</div>
-
-          <!-- Bans -->
+          <!-- Bans for JSON import -->
           <div class="grid grid-cols-2 gap-4">
             <div>
               <label class="block text-sm mb-2">Nos Bans (5)</label>
@@ -710,7 +755,33 @@
             </div>
           </div>
 
-          <!-- Picks -->
+          <div class="text-sm text-gray-400 text-center">- ou importer draft / saisir manuellement -</div>
+
+          <!-- Import Draft URL Section -->
+          <div class="bg-gray-700 rounded-lg p-4">
+            <h3 class="font-semibold mb-3">Importer Draft (URL)</h3>
+            <div class="flex gap-2">
+              <input
+                v-model="importUrl"
+                type="url"
+                placeholder="https://draftlol.dawe.gg/draft/..."
+                class="flex-1 px-3 py-2 bg-gray-600 rounded border border-gray-500"
+              />
+              <button
+                type="button"
+                @click="importDraft"
+                :disabled="!importUrl || importing"
+                class="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {{ importing ? 'Import...' : 'Importer' }}
+              </button>
+            </div>
+            <p v-if="importError" class="text-xs text-red-400 mt-1">{{ importError }}</p>
+            <p v-else-if="importSuccess" class="text-xs text-green-400 mt-1">{{ importSuccess }}</p>
+            <p v-else class="text-xs text-gray-400 mt-1">Coller un lien draftlol.dawe.gg pour remplir automatiquement</p>
+          </div>
+
+          <!-- Picks (manual entry) -->
           <div class="grid grid-cols-2 gap-4">
             <div>
               <label class="block text-sm mb-2">Nos Picks (5)</label>
@@ -744,7 +815,7 @@
           <div class="flex gap-3 pt-2">
             <button
               type="button"
-              @click="showAddGame = false"
+              @click="showAddGame = false; editingGameId = null"
               class="flex-1 py-2 bg-gray-700 hover:bg-gray-600 rounded transition"
             >
               Annuler
@@ -753,20 +824,33 @@
               type="submit"
               class="flex-1 py-2 bg-blue-600 hover:bg-blue-700 rounded transition"
             >
-              Ajouter
+              {{ editingGameId ? 'Modifier' : 'Ajouter' }}
             </button>
           </div>
         </form>
       </div>
     </div>
+
+    <!-- Match Detail Modal for draft games -->
+    <GameDetailModal
+      v-if="viewingMatchDetails"
+      :game-id="null"
+      :external-match-data="viewingMatchDetails"
+      @close="viewingMatchDetails = null"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { apiClient } from '@/api/client'
 import AppNavbar from '@/components/AppNavbar.vue'
+import GameDetailModal from '@/components/GameDetailModal.vue'
 import { loadChampionData, getChampionName, getChampionIconUrl, parseChampionInput } from '@/utils/champions'
+import type { MatchDetailResponse } from '@/types'
+
+const route = useRoute()
 
 interface DraftGame {
   id: number
@@ -780,6 +864,7 @@ interface DraftGame {
   result: string | null
   import_source: string | null
   import_url: string | null
+  has_match_data: boolean
   notes: string | null
   created_at: string
 }
@@ -848,6 +933,21 @@ const importUrl = ref('')
 const importing = ref(false)
 const importError = ref('')
 const importSuccess = ref('')
+
+// Edit game mode
+const editingGameId = ref<number | null>(null)
+
+// Match JSON import
+const matchJsonText = ref('')
+const matchJsonParsed = ref<any>(null)
+const matchJsonImporting = ref(false)
+const matchJsonError = ref('')
+const matchJsonDragOver = ref(false)
+const matchJsonFileName = ref('')
+const fileInput = ref<HTMLInputElement | null>(null)
+
+// Match detail modal for draft games
+const viewingMatchDetails = ref<MatchDetailResponse | null>(null)
 
 // Analytics state
 const allGames = ref<DraftGame[]>([])
@@ -1091,6 +1191,7 @@ async function deleteSeries(id: number) {
     selectedSeries.value = null
     allGamesLoaded.value = false
     await loadSeriesList()
+    await loadAllGames()
   } catch (error) {
     console.error('Failed to delete series:', error)
   }
@@ -1100,7 +1201,9 @@ async function addGame() {
   if (!selectedSeries.value) return
 
   const gameData = {
-    game_number: (selectedSeries.value.games?.length || 0) + 1,
+    game_number: editingGameId.value
+      ? undefined
+      : (selectedSeries.value.games?.length || 0) + 1,
     blue_side: newGame.value.blue_side,
     our_bans: parseChampionNames(newGame.value.our_bans_text),
     opponent_bans: parseChampionNames(newGame.value.opponent_bans_text),
@@ -1113,8 +1216,16 @@ async function addGame() {
   }
 
   try {
-    await apiClient.post(`/api/v1/draft-series/${selectedSeries.value.id}/games`, gameData)
+    if (editingGameId.value) {
+      await apiClient.patch(
+        `/api/v1/draft-series/${selectedSeries.value.id}/games/${editingGameId.value}`,
+        gameData
+      )
+    } else {
+      await apiClient.post(`/api/v1/draft-series/${selectedSeries.value.id}/games`, gameData)
+    }
     showAddGame.value = false
+    editingGameId.value = null
     newGame.value = {
       blue_side: true,
       result: null,
@@ -1130,13 +1241,24 @@ async function addGame() {
     allGamesLoaded.value = false
     await openSeries(selectedSeries.value)
     await loadSeriesList()
+    await loadAllGames()
   } catch (error) {
-    console.error('Failed to add game:', error)
+    console.error('Failed to save game:', error)
   }
 }
 
 function editGame(game: DraftGame) {
-  console.log('Edit game:', game)
+  editingGameId.value = game.id
+  newGame.value = {
+    blue_side: game.blue_side,
+    result: game.result,
+    our_bans_text: (game.our_bans || []).map(id => getChampName(id)).filter(n => n && n !== 'Unknown').join(', '),
+    opponent_bans_text: (game.opponent_bans || []).map(id => getChampName(id)).filter(n => n && n !== 'Unknown').join(', '),
+    our_picks_text: (game.our_picks || []).map(id => getChampName(id)).filter(n => n && n !== 'Unknown').join(', '),
+    opponent_picks_text: (game.opponent_picks || []).map(id => getChampName(id)).filter(n => n && n !== 'Unknown').join(', '),
+    notes: game.notes || '',
+  }
+  showAddGame.value = true
 }
 
 async function importDraft() {
@@ -1179,8 +1301,121 @@ async function deleteGame(gameId: number) {
     allGamesLoaded.value = false
     await openSeries(selectedSeries.value)
     await loadSeriesList()
+    await loadAllGames()
   } catch (error) {
     console.error('Failed to delete game:', error)
+  }
+}
+
+function handleFileDrop(e: DragEvent) {
+  matchJsonDragOver.value = false
+  const file = e.dataTransfer?.files[0]
+  if (file) readJsonFile(file)
+}
+
+function handleFileSelect(e: Event) {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (file) readJsonFile(file)
+  input.value = '' // Reset so same file can be re-selected
+}
+
+function readJsonFile(file: File) {
+  if (!file.name.endsWith('.json')) {
+    matchJsonError.value = 'Le fichier doit etre un .json'
+    return
+  }
+  matchJsonError.value = ''
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    try {
+      const text = e.target?.result as string
+      matchJsonParsed.value = JSON.parse(text)
+      matchJsonFileName.value = file.name
+      matchJsonText.value = '' // Clear text if file is loaded
+    } catch {
+      matchJsonError.value = 'JSON invalide dans le fichier'
+      matchJsonParsed.value = null
+      matchJsonFileName.value = ''
+    }
+  }
+  reader.readAsText(file)
+}
+
+async function importMatchJson() {
+  if (!selectedSeries.value || (!matchJsonText.value.trim() && !matchJsonParsed.value)) return
+
+  matchJsonImporting.value = true
+  matchJsonError.value = ''
+
+  // Use file-parsed data or parse from text
+  let parsed: any = matchJsonParsed.value
+  if (!parsed && matchJsonText.value.trim()) {
+    try {
+      parsed = JSON.parse(matchJsonText.value)
+    } catch {
+      matchJsonError.value = 'JSON invalide - verifiez le format'
+      matchJsonImporting.value = false
+      return
+    }
+  }
+
+  if (!parsed) {
+    matchJsonError.value = 'Aucun JSON fourni'
+    matchJsonImporting.value = false
+    return
+  }
+
+  try {
+    await apiClient.post(
+      `/api/v1/draft-series/${selectedSeries.value.id}/games/import-match-json`,
+      {
+        match_json: parsed,
+        blue_side: newGame.value.blue_side,
+        result: newGame.value.result || null,
+        our_bans: parseChampionInput(newGame.value.our_bans_text),
+        opponent_bans: parseChampionInput(newGame.value.opponent_bans_text),
+        notes: newGame.value.notes || null,
+      }
+    )
+
+    // Reset and reload
+    showAddGame.value = false
+    matchJsonText.value = ''
+    matchJsonParsed.value = null
+    matchJsonFileName.value = ''
+    matchJsonError.value = ''
+    newGame.value = {
+      blue_side: true,
+      result: null,
+      our_bans_text: '',
+      opponent_bans_text: '',
+      our_picks_text: '',
+      opponent_picks_text: '',
+      notes: '',
+    }
+    allGamesLoaded.value = false
+    await openSeries(selectedSeries.value)
+    await loadSeriesList()
+    await loadAllGames()
+  } catch (error: any) {
+    console.error('Failed to import match JSON:', error)
+    matchJsonError.value =
+      error.response?.data?.detail || 'Echec de l\'import du match JSON'
+  } finally {
+    matchJsonImporting.value = false
+  }
+}
+
+async function viewMatchDetails(game: DraftGame) {
+  if (!selectedSeries.value) return
+  try {
+    const response = await apiClient.get(
+      `/api/v1/draft-series/${selectedSeries.value.id}/games/${game.id}/match-details`
+    )
+    viewingMatchDetails.value = response.data
+  } catch (error) {
+    console.error('Failed to load match details:', error)
   }
 }
 
@@ -1197,6 +1432,19 @@ onMounted(async () => {
   // Pre-load games for stats
   if (seriesList.value.length > 0) {
     await loadAllGames()
+  }
+  // Auto-open series from query param (e.g. navigation from calendar)
+  const seriesId = route.query.series_id
+  if (seriesId) {
+    const id = parseInt(seriesId as string, 10)
+    if (!isNaN(id)) {
+      try {
+        const response = await apiClient.get(`/api/v1/draft-series/${id}`)
+        selectedSeries.value = response.data
+      } catch (error) {
+        console.error('Failed to auto-open series:', error)
+      }
+    }
   }
 })
 </script>

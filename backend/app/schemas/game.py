@@ -87,3 +87,14 @@ class MatchDetailResponse(BaseModel):
     queue_name: str
     blue_team: MatchTeam
     red_team: MatchTeam
+
+
+class MatchJsonImportRequest(BaseModel):
+    """Request body for importing a game from raw Riot match V5 JSON"""
+
+    match_json: dict
+    blue_side: bool = True
+    result: Optional[str] = None  # Override: 'win' or 'loss'
+    our_bans: list[int] = []
+    opponent_bans: list[int] = []
+    notes: Optional[str] = None

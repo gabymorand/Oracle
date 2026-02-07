@@ -3,7 +3,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, computed_field
 
 
 # Legacy Draft schemas (backwards compatibility)
@@ -57,10 +57,16 @@ class DraftGameCreate(DraftGameBase):
 class DraftGameResponse(DraftGameBase):
     id: int
     series_id: int
+    match_data: Optional[dict] = Field(default=None, exclude=True)
     created_at: datetime
 
     class Config:
         from_attributes = True
+
+    @computed_field
+    @property
+    def has_match_data(self) -> bool:
+        return self.match_data is not None
 
 
 class DraftSeriesBase(BaseModel):

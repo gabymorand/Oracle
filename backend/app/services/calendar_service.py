@@ -103,7 +103,25 @@ def get_event_with_series(db: Session, team_id: int, event_id: int) -> dict | No
 
 
 def create_event(db: Session, team_id: int, event_data: CalendarEventCreate) -> CalendarEvent:
-    """Create a new calendar event"""
+    """Create a new calendar event. Auto-creates a DraftSeries for scrims/official matches."""
+    draft_series_id = event_data.draft_series_id
+
+    # Auto-create DraftSeries for scrims/official matches with an opponent
+    if (
+        event_data.event_type.value in ("scrim", "official_match")
+        and event_data.opponent_name
+        and not draft_series_id
+    ):
+        series = DraftSeries(
+            team_id=team_id,
+            date=event_data.date,
+            opponent_name=event_data.opponent_name,
+            format=getattr(event_data, "series_format", "bo1") or "bo1",
+        )
+        db.add(series)
+        db.flush()
+        draft_series_id = series.id
+
     event = CalendarEvent(
         team_id=team_id,
         title=event_data.title,
@@ -112,7 +130,7 @@ def create_event(db: Session, team_id: int, event_data: CalendarEventCreate) -> 
         slot=event_data.slot.value,
         start_time=event_data.start_time,
         end_time=event_data.end_time,
-        draft_series_id=event_data.draft_series_id,
+        draft_series_id=draft_series_id,
         opponent_name=event_data.opponent_name,
         opponent_players=event_data.opponent_players,
         description=event_data.description,
@@ -147,10 +165,19 @@ def update_event(
 
 
 def delete_event(db: Session, team_id: int, event_id: int) -> bool:
-    """Delete an event"""
+    """Delete an event. Also deletes linked DraftSeries if it has no games."""
     event = get_event(db, team_id, event_id)
     if not event:
         return False
+
+    # Clean up empty auto-created DraftSeries
+    if event.draft_series_id:
+        series = db.query(DraftSeries).filter(
+            DraftSeries.id == event.draft_series_id,
+            DraftSeries.team_id == team_id,
+        ).first()
+        if series and len(series.games) == 0:
+            db.delete(series)
 
     db.delete(event)
     db.commit()

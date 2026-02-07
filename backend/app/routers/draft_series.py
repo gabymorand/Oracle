@@ -8,6 +8,8 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.deps import TeamContext, get_current_team
 from app.models.draft import DraftGame, DraftSeries
+from app.models.player import Player
+from app.models.riot_account import RiotAccount
 from app.schemas.draft import (
     DraftGameCreate,
     DraftGameResponse,
@@ -16,7 +18,9 @@ from app.schemas.draft import (
     DraftSeriesResponse,
     DraftSeriesUpdate,
 )
+from app.schemas.game import MatchDetailResponse, MatchJsonImportRequest
 from app.services.draft_import_service import import_draft_from_url
+from app.services.match_import_service import build_match_detail_response, parse_match_json
 
 router = APIRouter(prefix="/api/v1/draft-series", tags=["draft-series"])
 
@@ -402,3 +406,125 @@ async def delete_game(
     update_series_scores(db, series)
 
     return {"message": "Game deleted"}
+
+
+def _get_team_puuids_and_ranks(db: Session, team_id: int):
+    """Helper to get team PUUIDs and rank info."""
+    team_accounts = (
+        db.query(RiotAccount)
+        .join(Player)
+        .filter(Player.team_id == team_id)
+        .all()
+    )
+    team_puuids = set(acc.puuid for acc in team_accounts if acc.puuid)
+    puuid_to_rank = {
+        acc.puuid: {"tier": acc.rank_tier, "division": acc.rank_division, "lp": acc.lp}
+        for acc in team_accounts
+        if acc.puuid
+    }
+    return team_puuids, puuid_to_rank
+
+
+@router.post("/{series_id}/games/import-match-json", response_model=DraftGameResponse)
+async def import_game_from_match_json(
+    series_id: int,
+    request: MatchJsonImportRequest,
+    db: Session = Depends(get_db),
+    team_ctx: TeamContext = Depends(get_current_team),
+):
+    """Import a game from raw Riot match V5 JSON"""
+    series = db.query(DraftSeries).filter(
+        DraftSeries.id == series_id,
+        DraftSeries.team_id == team_ctx.team_id,
+    ).first()
+    if not series:
+        raise HTTPException(status_code=404, detail="Draft series not found")
+
+    # Check max games
+    max_games = {"bo1": 1, "bo3": 3, "bo5": 5}.get(series.format, 1)
+    if len(series.games) >= max_games:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Serie deja au maximum de games ({max_games}) pour le format {series.format}",
+        )
+
+    # Get team PUUIDs
+    team_puuids, _ = _get_team_puuids_and_ranks(db, team_ctx.team_id)
+
+    # Parse the match JSON (blue_side from form used as fallback if PUUIDs don't match)
+    try:
+        parsed = parse_match_json(request.match_json, team_puuids, blue_side=request.blue_side)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    # Use form result override if provided, otherwise use auto-detected from JSON
+    result = request.result or parsed["result"]
+
+    # Create the DraftGame
+    game = DraftGame(
+        series_id=series_id,
+        game_number=len(series.games) + 1,
+        blue_side=parsed["blue_side"],
+        our_bans=request.our_bans,
+        opponent_bans=request.opponent_bans,
+        our_picks=parsed["our_picks"],
+        opponent_picks=parsed["opponent_picks"],
+        result=result,
+        import_source="match_json",
+        match_data=request.match_json,
+        notes=request.notes,
+        created_at=datetime.utcnow(),
+    )
+    db.add(game)
+    db.commit()
+
+    # Update series scores
+    update_series_scores(db, series)
+
+    db.refresh(game)
+    return game
+
+
+@router.get(
+    "/{series_id}/games/{game_id}/match-details", response_model=MatchDetailResponse
+)
+async def get_draft_game_match_details(
+    series_id: int,
+    game_id: int,
+    db: Session = Depends(get_db),
+    team_ctx: TeamContext = Depends(get_current_team),
+):
+    """Get match details from stored match_data on a draft game"""
+    series = db.query(DraftSeries).filter(
+        DraftSeries.id == series_id,
+        DraftSeries.team_id == team_ctx.team_id,
+    ).first()
+    if not series:
+        raise HTTPException(status_code=404, detail="Draft series not found")
+
+    game = (
+        db.query(DraftGame)
+        .filter(DraftGame.id == game_id, DraftGame.series_id == series_id)
+        .first()
+    )
+    if not game:
+        raise HTTPException(status_code=404, detail="Game not found")
+
+    if not game.match_data:
+        raise HTTPException(
+            status_code=404, detail="Pas de donnees de match pour cette game"
+        )
+
+    # Get team PUUIDs and ranks
+    team_puuids, puuid_to_rank = _get_team_puuids_and_ranks(db, team_ctx.team_id)
+
+    # Get match_id from stored data (V5 has metadata.matchId, V4 has gameId)
+    match_id = (
+        game.match_data.get("metadata", {}).get("matchId")
+        or str(game.match_data.get("gameId", ""))
+        or f"CUSTOM-{game.id}"
+    )
+
+    return build_match_detail_response(
+        game.match_data, match_id, team_puuids, puuid_to_rank
+    )

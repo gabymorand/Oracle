@@ -29,6 +29,12 @@ async def create_riot_account(db: Session, player_id: int, account: RiotAccountC
     if existing:
         raise HTTPException(status_code=400, detail="Riot account already exists")
 
+    # If setting as main, unset all other accounts for this player
+    if account.is_main:
+        db.query(RiotAccount).filter(
+            RiotAccount.player_id == player_id,
+        ).update({"is_main": False})
+
     db_account = RiotAccount(
         player_id=player_id,
         puuid=puuid,

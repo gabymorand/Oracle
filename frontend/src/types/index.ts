@@ -61,6 +61,9 @@ export interface PlayerStats {
   avg_vision_score_per_min: number
   avg_kill_participation: number
   winrate: number
+  ranked_wins: number
+  ranked_losses: number
+  ranked_winrate: number
 }
 
 export interface LaneStats {
@@ -319,6 +322,7 @@ export interface DraftGame {
   opponent_picks: number[]
   result?: string
   notes?: string
+  has_match_data?: boolean
   created_at: string
 }
 
@@ -401,6 +405,7 @@ export interface ActivityGame {
   game_duration: number
   start_time: string
   end_time: string
+  is_smurf?: boolean
 }
 
 export interface ChampionMatchup {

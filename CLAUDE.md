@@ -2,26 +2,32 @@
 
 ## Objectifs MVP
 
-**Oracle** est une app de coaching pour une équipe League of Legends (≈20 utilisateurs/jour).
+**Oracle** est une app de coaching pour une equipe League of Legends (~20 utilisateurs/jour).
 
-### Fonctionnalités MVP prioritaires
+### Fonctionnalites implementees
 
-1. **Accès simplifié** : code d'accès partagé + choix de rôle (Coach/Joueur/Head Coach)
-2. **Gestion équipe** : 5 joueurs (Top/Jungle/Mid/ADC/Supp) + coachs positionnels + profils Riot multiples
+1. **Acces simplifie** : code d'acces par equipe (multi-tenant) + choix de role (Coach/Joueur/Head Coach)
+2. **Gestion equipe** : 5 joueurs (Top/Jungle/Mid/ADC/Supp) + coachs positionnels + profils Riot multiples (main + smurfs)
 3. **Statistiques** :
-   - Stats pures (CS/min, KDA, gold/min, vision/min, KP%)
-   - Stats comportementales (early deaths, roams, objectifs)
-   - Source : SoloQ obligatoire + tag manuel "competitive"
+   - Stats pures (CS/min, KDA, gold/min, vision/min, KP%) agregees sur tous les comptes
+   - Stats ranked (W/L, winrate) combinees depuis tous les comptes Riot
+   - Champion stats (winrate, KDA par champion)
+   - SoloQ Activity view (grille hebdo, detection smurf, matchups)
+   - Total LP equipe (Master+) sur le dashboard
 4. **Espace coach-joueur** : objectifs + notes par joueur
-5. **Draft planner** : historique drafts (picks/bans/résultat) + winrate global
+5. **Draft planner** : DraftSeries (BO1/BO3/BO5) avec games, import JSON V4/V5, historique
+6. **Calendrier** : events (scrim, official_match, training), auto-creation DraftSeries, badges W/L
+7. **Tier List** : tier list de champions par joueur
+8. **Scrim Management** : equipes adverses, reviews, scouting joueurs
+9. **Sponsors page** : highlights equipe (winrate, pentakills, matchs recents)
+10. **Rank tracking** : current + peak rank, historique de rank, graphes
 
 ### Non-objectifs (hors MVP)
 
-- Création de comptes utilisateurs / MDP / MFA
-- Oracle avancé (matchups stats, predictions)
-- Champion builds automatisés
+- Oracle avance (matchups stats, predictions)
+- Champion builds automatises
 - CI/CD
-- Scalabilité complexe
+- Scalabilite complexe
 - Event bus / microservices
 
 ---
@@ -30,12 +36,12 @@
 
 | Couche | Technologie |
 |--------|-------------|
-| Backend | FastAPI (Python 3.12), Pydantic, SQLAlchemy/SQLModel, Alembic |
+| Backend | FastAPI (Python 3.12), Pydantic, SQLAlchemy, Alembic |
 | Database | PostgreSQL |
 | Frontend | Vue 3 + TypeScript + Vite + Pinia + Vue Router + Tailwind CSS |
 | Infra | Docker Compose (local) |
 | Tests | pytest (backend), ruff (linter/formatter) |
-| API Docs | OpenAPI (auto-généré par FastAPI) |
+| API Docs | OpenAPI (auto-genere par FastAPI) |
 | Deployment | Railway (production future) |
 
 ---
@@ -43,45 +49,101 @@
 ## Architecture dossiers
 
 ```
-oracle/
-├── CLAUDE.md (ce fichier)
-├── README.md
+TSC/
+├── CLAUDE.md
 ├── docker-compose.yml
-├── .env.example
-├── .gitignore
+├── .env
 ├── backend/
 │   ├── Dockerfile
 │   ├── requirements.txt
 │   ├── pyproject.toml (ruff config)
 │   ├── alembic/
+│   │   └── versions/ (15 migrations)
 │   ├── app/
-│   │   ├── __init__.py
 │   │   ├── main.py
 │   │   ├── config.py
 │   │   ├── database.py
-│   │   ├── models/ (SQLAlchemy models)
-│   │   ├── schemas/ (Pydantic schemas)
-│   │   ├── routers/ (FastAPI routers)
-│   │   ├── services/ (business logic)
-│   │   └── riot/ (Riot API client + cache)
+│   │   ├── models/
+│   │   │   ├── player.py (Player, Role)
+│   │   │   ├── riot_account.py (RiotAccount)
+│   │   │   ├── coach.py (Coach)
+│   │   │   ├── game.py (Game, GameType)
+│   │   │   ├── player_note.py (PlayerNote)
+│   │   │   ├── draft.py (DraftSeries, DraftGame, Draft)
+│   │   │   ├── team.py (Team)
+│   │   │   ├── calendar.py (CalendarEvent, PlayerAvailability)
+│   │   │   ├── tier_list.py (ChampionTier)
+│   │   │   ├── rank_history.py (RankHistory)
+│   │   │   └── scrim_management.py (OpponentTeam, ScrimReview, ScoutedPlayer)
+│   │   ├── schemas/
+│   │   ├── routers/
+│   │   │   ├── auth.py
+│   │   │   ├── players.py
+│   │   │   ├── coaches.py
+│   │   │   ├── games.py
+│   │   │   ├── player_notes.py
+│   │   │   ├── drafts.py
+│   │   │   ├── draft_series.py
+│   │   │   ├── riot_accounts.py
+│   │   │   ├── stats.py
+│   │   │   ├── admin.py
+│   │   │   ├── calendar.py
+│   │   │   ├── tier_list.py
+│   │   │   └── scrim_management.py
+│   │   ├── services/
+│   │   │   ├── player_service.py
+│   │   │   ├── coach_service.py
+│   │   │   ├── player_note_service.py
+│   │   │   ├── draft_service.py
+│   │   │   ├── draft_import_service.py
+│   │   │   ├── riot_account_service.py
+│   │   │   ├── stats_service.py
+│   │   │   ├── admin_service.py
+│   │   │   ├── calendar_service.py
+│   │   │   ├── scrim_management_service.py
+│   │   │   ├── tier_list_service.py
+│   │   │   ├── match_import_service.py
+│   │   │   └── email_service.py
+│   │   └── riot/
+│   │       └── client.py (RiotAPIClient avec retry + backoff)
 │   └── tests/
 ├── frontend/
 │   ├── Dockerfile
 │   ├── package.json
-│   ├── tsconfig.json
 │   ├── vite.config.ts
-│   ├── index.html
 │   ├── src/
 │   │   ├── main.ts
 │   │   ├── App.vue
-│   │   ├── router/
-│   │   ├── stores/ (Pinia)
+│   │   ├── router/index.ts
+│   │   ├── stores/ (Pinia - auth, etc.)
+│   │   ├── api/index.ts (typed API client)
+│   │   ├── types/index.ts
 │   │   ├── views/
-│   │   ├── components/
-│   │   ├── api/ (typed API client)
-│   │   └── types/
+│   │   │   ├── LoginView.vue
+│   │   │   ├── RoleSelectionView.vue
+│   │   │   ├── PlayerSelectionView.vue
+│   │   │   ├── CoachSelectionView.vue
+│   │   │   ├── DashboardView.vue
+│   │   │   ├── PlayerView.vue
+│   │   │   ├── AnalyticsView.vue
+│   │   │   ├── SoloQActivityView.vue
+│   │   │   ├── CalendarView.vue
+│   │   │   ├── PlanningView.vue
+│   │   │   ├── DraftsView.vue
+│   │   │   ├── ScrimsView.vue
+│   │   │   ├── CoachesManagementView.vue
+│   │   │   ├── TierListView.vue
+│   │   │   ├── AdminView.vue
+│   │   │   └── SponsorsView.vue
+│   │   └── components/
+│   │       ├── AppNavbar.vue
+│   │       ├── AppLogo.vue
+│   │       ├── RankBadge.vue
+│   │       ├── RankGraph.vue
+│   │       ├── StatsGraph.vue
+│   │       ├── ChampionStats.vue
+│   │       └── GameDetailModal.vue
 │   └── public/
-└── docs/ (optionnel)
 ```
 
 ---
@@ -92,206 +154,218 @@ oracle/
 
 - **Python** : snake_case (fonctions, variables), PascalCase (classes)
 - **TypeScript** : camelCase (variables, fonctions), PascalCase (types, composants Vue)
-- **Fichiers** : kebab-case.vue, snake_case.py
+- **Fichiers** : kebab-case.vue (PascalCase aussi accepte), snake_case.py
 - **Routes API** : `/api/v1/resource` (pluriel si collection)
 
 ### Style
 
 - **Backend** : ruff (formatter + linter), line-length = 100
-- **Frontend** : Prettier + ESLint (Vue/TS), single quotes, 2 spaces
+- **Frontend** : single quotes, 2 spaces
 - **Commits** : `type(scope): message` (ex: `feat(api): add player CRUD`)
-
-### Tests
-
-- **Backend** : tests unitaires dans `/backend/tests`, nommage `test_*.py`
-- **Frontend** : optionnel pour MVP (prévoir Vitest si temps)
-- Coverage minimal : endpoints critiques (auth, CRUD players)
 
 ---
 
-## Modèle de données MVP
+## Modele de donnees (actuel)
 
 ### Tables principales
 
 ```sql
+-- Teams (multi-tenant)
+teams
+  id (PK), name, access_code (unique), created_at
+
 -- Players
 players
-  id (PK)
-  summoner_name (unique, indexed)
-  role (enum: top/jungle/mid/adc/support)
-  created_at
-  updated_at
+  id (PK), team_id (FK), summoner_name, role, email, created_at, updated_at
 
--- RiotAccounts (1 joueur peut avoir plusieurs comptes)
+-- RiotAccounts (1 joueur -> N comptes, 1 main + smurfs)
 riot_accounts
-  id (PK)
-  player_id (FK -> players.id)
-  puuid (unique, indexed)
-  summoner_name
-  tag_line
-  is_main (boolean)
-  created_at
+  id (PK), player_id (FK), puuid (unique), summoner_id,
+  summoner_name, tag_line, is_main,
+  rank_tier, rank_division, lp, wins, losses,
+  peak_tier, peak_division, peak_lp,
+  last_refreshed_at, created_at, updated_at
 
--- Notes/Objectives
-player_notes
-  id (PK)
-  player_id (FK)
-  author_role (enum: coach/head_coach)
-  note_type (enum: objective/note)
-  content (text)
-  created_at
-  updated_at
-
--- Drafts
-drafts
-  id (PK)
-  date
-  opponent_name
-  blue_side (boolean)
-  picks (jsonb: array de champion IDs)
-  bans (jsonb: array de champion IDs)
-  result (enum: win/loss/null)
-  notes (text, optional)
-  created_at
+-- RankHistory (historique de rang)
+rank_history
+  id (PK), riot_account_id (FK), tier, division, lp, recorded_at
 
 -- Games (cache stats Riot)
 games
-  id (PK)
-  riot_account_id (FK)
-  match_id (unique, indexed)
-  game_type (enum: soloq/competitive)
-  champion_id
-  role
-  stats (jsonb: kda, cs, vision, etc.)
-  game_duration
-  game_date
-  created_at
+  id (PK), riot_account_id (FK), match_id (unique),
+  game_type (soloq/competitive), champion_id, role,
+  stats (jsonb), game_duration, game_date, is_pentakill, created_at
+
+-- Coaches
+coaches
+  id (PK), team_id (FK), name, role, created_at
+
+-- PlayerNotes
+player_notes
+  id (PK), player_id (FK), coach_id (FK), author_role, note_type, content,
+  created_at, updated_at
+
+-- DraftSeries (BO1/BO3/BO5)
+draft_series
+  id (PK), team_id (FK), date, opponent_name, format, notes, created_at
+
+-- DraftGames (1 serie -> N games)
+draft_games
+  id (PK), series_id (FK), game_number, blue_side, result,
+  blue_bans/red_bans/blue_picks/red_picks (jsonb),
+  match_data (jsonb, import V4/V5), notes, created_at
+
+-- CalendarEvents
+calendar_events
+  id (PK), team_id (FK), draft_series_id (FK, nullable),
+  event_type (scrim/official_match/training/other),
+  title, date, start_time, end_time, opponent_name, opponent_players (jsonb),
+  location, notes, created_at
+
+-- PlayerAvailability
+player_availabilities
+  id (PK), player_id (FK), date, time_slot, is_available
+
+-- ChampionTier (tier list)
+champion_tiers
+  id (PK), player_id (FK), team_id (FK), champion_id, tier, notes
+
+-- ScrimManagement
+opponent_teams, scrim_reviews, scouted_players
 ```
 
-### Relations
+### Relations principales
 
-- 1 player → N riot_accounts
-- 1 player → N player_notes
-- 1 riot_account → N games
+- 1 team -> N players, N coaches, N draft_series, N calendar_events
+- 1 player -> N riot_accounts, N player_notes, N availabilities, N champion_tiers
+- 1 riot_account -> N games, N rank_history
+- 1 draft_series -> N draft_games
+- 1 calendar_event -> 0..1 draft_series (auto-cree pour scrims)
 
 ---
 
-## Endpoints API MVP
+## Endpoints API (principaux)
 
 ### Auth
-- `POST /api/v1/auth/validate-code` : valide le code d'accès + retourne token simple (JWT léger)
+- `POST /api/v1/auth/validate-code` : valide code equipe, retourne token JWT
 
 ### Players
-- `GET /api/v1/players` : liste joueurs
-- `POST /api/v1/players` : créer joueur
-- `GET /api/v1/players/{id}` : détails joueur + riot_accounts
-- `PATCH /api/v1/players/{id}` : update joueur
-- `DELETE /api/v1/players/{id}` : supprimer joueur
+- `GET/POST /api/v1/players` : liste / creer joueur
+- `GET/PATCH/DELETE /api/v1/players/{id}` : detail / update / supprimer
 
 ### Riot Accounts
 - `POST /api/v1/players/{id}/riot-accounts` : ajouter compte Riot
 - `DELETE /api/v1/riot-accounts/{id}` : supprimer compte
+- `PATCH /api/v1/riot-accounts/{id}/set-main` : definir compte principal
+- `PATCH /api/v1/riot-accounts/{id}/rank` : mise a jour rank manuelle
 
 ### Stats
-- `GET /api/v1/stats/player/{player_id}` : synthèse stats joueur (tous comptes)
-- `GET /api/v1/stats/lane/{lane}` : stats lane (ex: botlane = adc + support)
-- `POST /api/v1/stats/refresh/{riot_account_id}` : fetch nouveaux matchs Riot API
+- `GET /api/v1/stats/player/{player_id}` : stats joueur (tous comptes agreges)
+- `GET /api/v1/stats/lane/{lane}` : stats lane (botlane = adc + support)
+- `POST /api/v1/stats/refresh/{riot_account_id}` : fetch Riot API
+- `GET /api/v1/stats/champions/{player_id}` : stats par champion
+- `GET /api/v1/stats/activity/{team_id}` : grille SoloQ hebdo
+- `GET /api/v1/stats/highlights/{team_id}` : highlights equipe (sponsors)
 
-### Notes/Objectives
-- `GET /api/v1/players/{id}/notes` : liste notes/objectifs
-- `POST /api/v1/players/{id}/notes` : créer note/objectif
-- `PATCH /api/v1/notes/{id}` : update note
-- `DELETE /api/v1/notes/{id}` : supprimer note
+### Draft Series
+- `GET/POST /api/v1/draft-series` : liste / creer series
+- `GET/DELETE /api/v1/draft-series/{id}` : detail / supprimer
+- `POST /api/v1/draft-series/{id}/games` : ajouter game a serie
+- `POST /api/v1/draft-series/{id}/import` : import JSON V4/V5
 
-### Drafts
-- `GET /api/v1/drafts` : liste drafts
-- `POST /api/v1/drafts` : créer draft
-- `GET /api/v1/drafts/{id}` : détails draft
-- `DELETE /api/v1/drafts/{id}` : supprimer draft
+### Calendar
+- `GET/POST /api/v1/calendar/events` : liste / creer event (auto-cree DraftSeries pour scrims)
+- `PATCH/DELETE /api/v1/calendar/events/{id}` : update / supprimer
 
-### Health
-- `GET /health` : healthcheck
+### Notes, Coaches, TierList, ScrimManagement, Admin, Games
+- CRUD standard sur chaque ressource
 
 ---
 
-## Riot API - Règles
+## Riot API
 
-### Rate Limits (Développement)
+### Rate Limits (Dev)
+- 20 req/s, 100 req/2min
 
-- 20 requests / 1 second
-- 100 requests / 2 minutes
+### Strategie
+1. **Client unique** : `app/riot/client.py` avec retry + backoff exponentiel
+2. **Cache DB** : matchs stockes dans `games` (eviter re-fetch)
+3. **Rank auto** : `fetch_and_update_rank()` met a jour tier/division/lp/wins/losses + peak
+4. **Match import** : `fetch_and_store_matches()` stocke les 20 derniers matchs
 
-### Stratégie
-
-1. **Client unique** : module `app/riot/client.py` avec retry + backoff exponentiel
-2. **Cache DB** : stocker matchs dans table `games` (éviter re-fetch)
-3. **Cache Redis** (optionnel futur) : TTL court pour puuid lookups
-4. **Endpoints utilisés** :
-   - `/riot/account/v1/accounts/by-riot-id/{gameName}/{tagLine}` → PUUID
-   - `/lol/summoner/v4/summoners/by-puuid/{puuid}` → Summoner info
-   - `/lol/match/v5/matches/by-puuid/{puuid}/ids` → Match IDs
-   - `/lol/match/v5/matches/{matchId}` → Match details
+### Endpoints Riot utilises
+- `/riot/account/v1/accounts/by-riot-id/{gameName}/{tagLine}` -> PUUID
+- `/lol/summoner/v4/summoners/by-puuid/{puuid}` -> Summoner info
+- `/lol/league/v4/entries/by-summoner/{summonerId}` -> Rank info
+- `/lol/match/v5/matches/by-puuid/{puuid}/ids` -> Match IDs
+- `/lol/match/v5/matches/{matchId}` -> Match details
 
 ### Gestion erreurs
-
-- 429 (rate limit) : retry avec header `Retry-After`
+- 429 : retry avec `Retry-After`
+- 401/403 : message clair "API key invalid/expired"
 - 404 : compte inexistant
 - 5xx : retry max 3 fois
 
-### Variables d'environnement
-
-```
-RIOT_API_KEY=RGAPI-...
-RIOT_API_REGION=euw1 (ou configurable)
-RIOT_API_CACHE_TTL=3600 (secondes)
-```
-
 ---
 
-## Déploiement
+## Deploiement
 
-### Local (MVP)
+### Local
 ```bash
 docker-compose up --build
 ```
 
 ### Production (Railway - futur)
-
-- Backend : service FastAPI (Dockerfile)
-- Frontend : service Vite build (serve static)
+- Backend : FastAPI (Dockerfile)
+- Frontend : Vite build (serve static)
 - PostgreSQL : managed Railway Postgres
-- Variables d'env via Railway UI
-- Pas de CI/CD pour l'instant (deploy manuel)
 
 ---
 
-## Prochaines étapes (post-scaffold)
+## Avancement
 
-1. ✅ Scaffold complet (structure + docker)
-2. 🔄 Implémenter endpoints MVP (CRUD players, auth, notes, drafts)
-3. 🔄 Riot API client fonctionnel + cache
-4. 🔄 Frontend : écrans code d'accès, dashboard, player profile, draft planner
-5. 🔄 Stats computation logic (agrégation games → metrics)
-6. 🔄 Tests backend (pytest sur endpoints critiques)
-7. 🔄 Polish UI/UX (Tailwind composants)
-8. 🔄 Deploy Railway (config + test prod)
+### Fait
+- [x] Scaffold complet (structure + docker + multi-tenant)
+- [x] Auth par code d'equipe (JWT)
+- [x] CRUD Players + Coaches + Notes
+- [x] Riot API client (PUUID, rank, matches, retry/backoff)
+- [x] Multi-comptes Riot (main + smurfs, toggle main)
+- [x] Stats joueur (agregation tous comptes, ranked W/L combines)
+- [x] Stats champion (winrate, KDA par champion)
+- [x] SoloQ Activity (grille hebdo, detection smurf, matchups)
+- [x] Dashboard (LP total Master+, stats equipe)
+- [x] Draft planner (DraftSeries BO1/3/5, import JSON V4/V5)
+- [x] Calendrier (events, auto-creation DraftSeries, badges W/L, bouton "Voir Draft")
+- [x] GameDetailModal (voir stats match depuis calendrier)
+- [x] Tier List par joueur
+- [x] Scrim Management (adversaires, reviews, scouting)
+- [x] Sponsors page (highlights equipe)
+- [x] Rank tracking (current + peak, historique, graphes)
+- [x] Admin panel
+
+### A faire
+- [ ] Tests backend (pytest sur endpoints critiques)
+- [ ] Deploy Railway (config + test prod)
+- [ ] Stats comportementales (early deaths, roams, objectifs)
+- [ ] Invitations calendrier Google (email_service existe mais pas branche)
 
 ---
 
-## Décisions clés
+## Decisions cles
 
-| Décision | Justification |
+| Decision | Justification |
 |----------|---------------|
-| Pas d'auth complexe | 20 users/jour, code partagé suffit (JWT simple sans refresh) |
-| SQLAlchemy (pas SQLModel) | Maturité + flexibilité migrations Alembic |
-| Postgres (pas SQLite) | Prêt prod, jsonb pour stats/drafts |
-| Pas de Redis initialement | Cache DB suffit, ajout facile si besoin |
-| Tailwind (pas UI lib) | Flexibilité + légèreté, pas de dépendance lourde |
-| Monorepo simple | Pas besoin turborepo/nx pour 2 apps |
+| Multi-tenant par code equipe | Simple, pas de MDP, ~20 users/jour |
+| SQLAlchemy (pas SQLModel) | Maturite + flexibilite migrations Alembic |
+| PostgreSQL + jsonb | Stats/drafts en JSON, pret prod |
+| Tailwind CSS | Flexibilite + legerete |
+| Monorepo simple | 2 apps, pas besoin de tooling complexe |
 | Docker Compose | Dev local simple, Railway utilise Dockerfiles |
+| Rank data sur RiotAccount | Pas besoin table separee, refresh via Riot API |
+| DraftSeries auto-cree | A la creation d'un scrim, serie draft liee automatiquement |
 
 ---
 
-**Version** : 1.0 (2026-01-17)
+**Version** : 2.0 (2026-02-07)
 **Maintainer** : Claude Code
-**Statut** : Scaffold MVP en cours
+**Statut** : MVP fonctionnel, en iteration

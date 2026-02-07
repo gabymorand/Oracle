@@ -3,7 +3,7 @@
     <img
       v-if="rankImage"
       :src="rankImage"
-      :alt="`${tier} ${division}`"
+      :alt="displayText"
       class="w-8 h-8 object-contain flex-shrink-0"
     />
     <span class="font-semibold" :class="textColor">

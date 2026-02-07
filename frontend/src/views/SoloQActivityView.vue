@@ -273,6 +273,10 @@ onMounted(loadActivity)
         <span class="px-2 py-0.5 rounded text-xs bg-blue-500/20 text-blue-400 border border-blue-500/50">SCRIM</span>
         <span>Scrim/Competitive</span>
       </div>
+      <div class="flex items-center gap-2">
+        <span class="px-2 py-0.5 rounded text-xs bg-orange-500/20 text-orange-400 border border-orange-500/50">SMURF</span>
+        <span>Compte secondaire</span>
+      </div>
     </div>
 
     <!-- Activity Grid -->
@@ -344,7 +348,12 @@ onMounted(loadActivity)
                 <div
                   v-for="game in getGamesForDay(player, day.dateKey)"
                   :key="game.id"
-                  class="bg-gray-800 rounded-lg p-2 border border-gray-700 hover:border-gray-500 transition cursor-pointer"
+                  :class="[
+                    'rounded-lg p-2 border transition cursor-pointer',
+                    game.is_smurf
+                      ? 'bg-orange-900/20 border-orange-700/50 hover:border-orange-500'
+                      : 'bg-gray-800 border-gray-700 hover:border-gray-500',
+                  ]"
                   @click="openGameDetail(game.id)"
                 >
                   <!-- Time -->
@@ -352,13 +361,20 @@ onMounted(loadActivity)
                     {{ game.start_time }} — {{ game.end_time }}
                   </div>
 
-                  <!-- Game Type Badge -->
-                  <div v-if="getGameTypeBadge(game.game_type)" class="mb-1">
+                  <!-- Game Type / Smurf Badges -->
+                  <div v-if="getGameTypeBadge(game.game_type) || game.is_smurf" class="mb-1 flex gap-1">
                     <span
+                      v-if="getGameTypeBadge(game.game_type)"
                       class="text-xs px-1.5 py-0.5 rounded"
                       :class="getGameTypeBadge(game.game_type)?.class"
                     >
                       {{ getGameTypeBadge(game.game_type)?.label }}
+                    </span>
+                    <span
+                      v-if="game.is_smurf"
+                      class="text-xs px-1.5 py-0.5 rounded bg-orange-500/20 text-orange-400 border border-orange-500/50"
+                    >
+                      SMURF
                     </span>
                   </div>
 

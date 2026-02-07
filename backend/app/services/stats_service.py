@@ -12,6 +12,12 @@ def get_player_stats(db: Session, player_id: int) -> PlayerStats | None:
     if not player:
         return None
 
+    # Compute ranked season totals from all riot accounts
+    ranked_wins = sum(acc.wins or 0 for acc in player.riot_accounts)
+    ranked_losses = sum(acc.losses or 0 for acc in player.riot_accounts)
+    ranked_total = ranked_wins + ranked_losses
+    ranked_winrate = round((ranked_wins / ranked_total * 100), 2) if ranked_total > 0 else 0.0
+
     # Get all games for all riot accounts of this player
     riot_account_ids = [acc.id for acc in player.riot_accounts]
     games = db.query(Game).filter(Game.riot_account_id.in_(riot_account_ids)).all()
@@ -28,9 +34,12 @@ def get_player_stats(db: Session, player_id: int) -> PlayerStats | None:
             avg_vision_score_per_min=0.0,
             avg_kill_participation=0.0,
             winrate=0.0,
+            ranked_wins=ranked_wins,
+            ranked_losses=ranked_losses,
+            ranked_winrate=ranked_winrate,
         )
 
-    # Compute stats (stub for now)
+    # Compute stats from stored games
     total_games = len(games)
     wins = sum(1 for g in games if g.stats.get("win", False))
     winrate = (wins / total_games * 100) if total_games > 0 else 0.0
@@ -53,6 +62,9 @@ def get_player_stats(db: Session, player_id: int) -> PlayerStats | None:
         avg_vision_score_per_min=round(avg_vision_score_per_min, 2),
         avg_kill_participation=round(avg_kill_participation, 2),
         winrate=round(winrate, 2),
+        ranked_wins=ranked_wins,
+        ranked_losses=ranked_losses,
+        ranked_winrate=ranked_winrate,
     )
 
 
