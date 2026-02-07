@@ -81,12 +81,30 @@ const router = createRouter({
       component: () => import('@/views/AnalyticsView.vue'),
       meta: { requiresAuth: true },
     },
+    {
+      path: '/soloq',
+      name: 'soloq-activity',
+      component: () => import('@/views/SoloQActivityView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/admin',
+      name: 'admin',
+      component: () => import('@/views/AdminView.vue'),
+      meta: { isAdmin: true },
+    },
   ],
 })
 
 router.beforeEach((to, _from, next) => {
   const authStore = useAuthStore()
   authStore.init()
+
+  // Skip auth check for admin routes (admin has its own auth)
+  if (to.meta.isAdmin) {
+    next()
+    return
+  }
 
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
     next('/')

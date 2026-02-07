@@ -8,6 +8,7 @@ from app.schemas.riot_account import RiotAccountResponse
 class PlayerBase(BaseModel):
     summoner_name: str
     role: str
+    email: str | None = None
 
 
 class PlayerCreate(PlayerBase):
@@ -17,6 +18,7 @@ class PlayerCreate(PlayerBase):
 class PlayerUpdate(BaseModel):
     summoner_name: str | None = None
     role: str | None = None
+    email: str | None = None
 
 
 class PlayerResponse(PlayerBase):

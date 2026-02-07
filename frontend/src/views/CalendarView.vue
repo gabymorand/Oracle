@@ -826,6 +826,20 @@
             />
           </div>
 
+          <!-- Send invitation checkbox -->
+          <div class="flex items-center gap-3 p-3 bg-gray-700/50 rounded-lg">
+            <input
+              id="sendInvitation"
+              v-model="newEvent.sendInvitation"
+              type="checkbox"
+              class="w-5 h-5 rounded bg-gray-600 border-gray-500 text-green-600 focus:ring-green-500"
+            />
+            <label for="sendInvitation" class="flex-1">
+              <span class="text-sm font-medium">Envoyer invitation calendrier</span>
+              <p class="text-xs text-gray-400">Envoie un email avec fichier .ics aux joueurs ayant une adresse email</p>
+            </label>
+          </div>
+
           <div class="flex justify-end gap-3 pt-4">
             <button
               type="button"
@@ -910,6 +924,26 @@
           <div v-if="selectedEvent.description" class="text-gray-300">
             <span class="text-gray-400">Description:</span>
             {{ selectedEvent.description }}
+          </div>
+        </div>
+
+        <!-- Send Invitation Button -->
+        <div class="mb-4 p-3 bg-gray-700/50 rounded-lg">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm font-medium">Envoyer invitation calendrier</p>
+              <p class="text-xs text-gray-400">Envoie un email avec fichier .ics aux joueurs</p>
+            </div>
+            <button
+              @click="sendInvitation"
+              :disabled="sendingInvitation"
+              class="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition flex items-center gap-2"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+              {{ sendingInvitation ? 'Envoi...' : 'Envoyer' }}
+            </button>
           </div>
         </div>
 
@@ -1180,6 +1214,8 @@ const weekOffset = ref(0)
 const planningAvailabilities = ref<DayAvailabilitySummary[]>([])
 const loadingPlanning = ref(false)
 const savingPlanningSlot = ref<string | null>(null)
+const sendingInvitation = ref(false)
+const smtpConfigured = ref<boolean | null>(null)
 
 const newEvent = ref({
   title: '',
@@ -1190,6 +1226,7 @@ const newEvent = ref({
   opponent_players: '',
   description: '',
   location: '',
+  sendInvitation: false,
 })
 
 // Computed
@@ -1275,11 +1312,17 @@ const calendarDays = computed((): CalendarDay[] => {
 
 // Helper functions
 function formatDateISO(date: Date): string {
-  return date.toISOString().split('T')[0]
+  // Use local date parts to avoid timezone issues
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
 
 function formatDate(dateStr: string): string {
-  const date = new Date(dateStr)
+  // Parse date string as local date (not UTC)
+  const [year, month, day] = dateStr.split('-').map(Number)
+  const date = new Date(year, month - 1, day)
   return date.toLocaleDateString('fr-FR', {
     weekday: 'long',
     day: 'numeric',
@@ -1542,7 +1585,26 @@ async function createEvent() {
       description: newEvent.value.description || undefined,
       location: newEvent.value.location || undefined,
     }
-    await calendarApi.createEvent(eventData)
+    const shouldSendInvitation = newEvent.value.sendInvitation
+    const response = await calendarApi.createEvent(eventData)
+
+    // Send invitation if checkbox was checked
+    if (shouldSendInvitation && response.data.id) {
+      try {
+        const inviteRes = await calendarApi.sendInvitation(response.data.id)
+        if (inviteRes.data.smtp_configured && inviteRes.data.sent_to.length > 0) {
+          alert(`Evenement cree ! Invitation envoyee a ${inviteRes.data.sent_to.length} joueur(s).`)
+        } else if (!inviteRes.data.smtp_configured) {
+          alert('Evenement cree ! SMTP non configure, invitation non envoyee.')
+        } else {
+          alert('Evenement cree ! Aucun joueur avec email trouve.')
+        }
+      } catch (inviteError) {
+        console.error('Failed to send invitation:', inviteError)
+        alert('Evenement cree mais erreur lors de l\'envoi de l\'invitation.')
+      }
+    }
+
     showCreateEvent.value = false
     // Reset form
     newEvent.value = {
@@ -1554,6 +1616,7 @@ async function createEvent() {
       opponent_players: '',
       description: '',
       location: '',
+      sendInvitation: false,
     }
     await loadMonthData()
     // Refresh selected day if it matches
@@ -1585,6 +1648,50 @@ async function deleteEventConfirm() {
   } catch (error) {
     console.error('Failed to delete event:', error)
     alert('Erreur lors de la suppression')
+  }
+}
+
+async function checkSmtpStatus() {
+  try {
+    const res = await calendarApi.getSmtpStatus()
+    smtpConfigured.value = res.data.configured
+  } catch (error) {
+    console.error('Failed to check SMTP status:', error)
+    smtpConfigured.value = false
+  }
+}
+
+async function sendInvitation() {
+  console.log('sendInvitation called', selectedEvent.value)
+  if (!selectedEvent.value) {
+    console.log('No selected event!')
+    return
+  }
+
+  console.log('Sending invitation for event ID:', selectedEvent.value.id)
+  sendingInvitation.value = true
+  try {
+    console.log('Calling calendarApi.sendInvitation...')
+    const res = await calendarApi.sendInvitation(selectedEvent.value.id)
+    console.log('Response:', res.data)
+    if (!res.data.smtp_configured) {
+      alert('SMTP non configure. Contactez l\'administrateur pour configurer l\'envoi d\'emails.')
+      return
+    }
+    if (res.data.sent_to.length > 0) {
+      alert(`Invitation envoyee a ${res.data.sent_to.length} joueur(s) : ${res.data.sent_to.join(', ')}`)
+    } else if (res.data.failed.length > 0) {
+      alert(`Echec de l'envoi : ${res.data.failed.join(', ')}`)
+    } else {
+      alert('Aucun joueur avec adresse email trouve. Les joueurs doivent renseigner leur email dans leur profil.')
+    }
+  } catch (error: any) {
+    console.error('Failed to send invitation:', error)
+    console.error('Error response:', error.response?.data)
+    console.error('Error status:', error.response?.status)
+    alert(`Erreur lors de l'envoi de l'invitation: ${error.response?.data?.detail || error.message || 'Erreur inconnue'}`)
+  } finally {
+    sendingInvitation.value = false
   }
 }
 

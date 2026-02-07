@@ -26,6 +26,8 @@ class RiotAccount(Base):
     peak_tier = Column(String, nullable=True)
     peak_division = Column(String, nullable=True)
     peak_lp = Column(Integer, nullable=True)
+    # Refresh tracking
+    last_refreshed_at = Column(DateTime, nullable=True)  # When stats were last fetched from Riot API
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

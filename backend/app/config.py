@@ -14,10 +14,19 @@ class Settings(BaseSettings):
     riot_api_key: str
     riot_api_region: str = "euw1"
     riot_api_cache_ttl: int = 3600
-    access_code: str
+    access_code: str  # Legacy, kept for compatibility
+    admin_code: str = "ORACLE_ADMIN_2026"  # Default admin code
     jwt_secret: str
     jwt_algorithm: str = "HS256"
     jwt_expiration_hours: int = 720  # 30 days
+
+    # SMTP settings for calendar invitations (optional)
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from_email: str = ""
+    smtp_from_name: str = "Oracle Coaching"
 
     class Config:
         env_file = str(_env_file)

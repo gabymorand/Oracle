@@ -2,6 +2,7 @@ export interface Player {
   id: number
   summoner_name: string
   role: string
+  email?: string
   created_at: string
   updated_at?: string
   riot_accounts: RiotAccount[]
@@ -17,6 +18,12 @@ export interface RiotAccount {
   rank_tier?: string
   rank_division?: string
   lp?: number
+  wins?: number
+  losses?: number
+  peak_tier?: string
+  peak_division?: string
+  peak_lp?: number
+  last_refreshed_at?: string
   created_at: string
   updated_at?: string
 }
@@ -334,4 +341,105 @@ export interface ScrimCalendarStats {
   wins: number
   losses: number
   winrate: number
+}
+
+// Admin Types
+
+export interface AdminTeamStats {
+  id: number
+  name: string
+  access_code: string
+  players_count: number
+  coaches_count: number
+  drafts_count: number
+  events_count: number
+  created_at: string
+}
+
+export interface AdminPlayerSummary {
+  id: number
+  summoner_name: string
+  role: string
+  riot_accounts_count: number
+}
+
+export interface AdminCoachSummary {
+  id: number
+  name: string
+  role?: string
+}
+
+export interface AdminTeamDetails {
+  id: number
+  name: string
+  access_code: string
+  created_at: string
+  players: AdminPlayerSummary[]
+  coaches: AdminCoachSummary[]
+}
+
+export interface AdminDashboard {
+  total_teams: number
+  total_players: number
+  total_coaches: number
+  total_drafts: number
+  teams: AdminTeamStats[]
+}
+
+// SoloQ Activity Types
+
+export interface ActivityGame {
+  id: number
+  match_id: string
+  game_type: string
+  champion_id: number
+  kills: number
+  deaths: number
+  assists: number
+  win: boolean
+  game_date: string
+  game_duration: number
+  start_time: string
+  end_time: string
+}
+
+export interface ChampionMatchup {
+  champion_id: number
+  games: number
+  wins: number
+  losses: number
+  winrate: number
+  avg_kills: number
+  avg_deaths: number
+  avg_assists: number
+}
+
+export interface PlayerActivitySummary {
+  player_id: number
+  summoner_name: string
+  role: string
+  riot_account_id?: number
+  rank_tier?: string
+  rank_division?: string
+  lp?: number
+  total_games: number
+  wins: number
+  losses: number
+  winrate: number
+  scrims: number
+  duos: number
+  games_by_day: Record<string, ActivityGame[]>
+  matchups: ChampionMatchup[]
+  last_refreshed_at?: string
+}
+
+export interface TeamActivityResponse {
+  week_start: string
+  week_end: string
+  total_soloq: number
+  total_scrims: number
+  total_duos: number
+  overall_winrate: number
+  players: PlayerActivitySummary[]
+  last_updated: string
 }

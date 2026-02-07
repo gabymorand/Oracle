@@ -54,8 +54,21 @@ class RiotAPIClient:
         url = f"{self.base_url_region}/lol/summoner/v4/summoners/by-puuid/{puuid}"
         return await self._request(url)
 
-    async def get_match_ids_by_puuid(self, puuid: str, start: int = 0, count: int = 100) -> list[str]:
+    async def get_match_ids_by_puuid(
+        self, puuid: str, start: int = 0, count: int = 100, start_time: int | None = None
+    ) -> list[str]:
+        """
+        Get match IDs for a PUUID.
+
+        Args:
+            puuid: Player's PUUID
+            start: Index to start from
+            count: Number of matches to return (max 100)
+            start_time: Epoch seconds - only return matches after this time
+        """
         url = f"{self.base_url_europe}/lol/match/v5/matches/by-puuid/{puuid}/ids?start={start}&count={count}"
+        if start_time:
+            url += f"&startTime={start_time}"
         return await self._request(url)
 
     async def get_match_details(self, match_id: str) -> dict:
@@ -204,15 +217,36 @@ class RiotAPIClient:
             raise  # Re-raise the exception so frontend can handle it
 
     async def fetch_and_store_matches(self, db: Session, riot_account, max_matches: int = 20):
-        """Fetch recent matches and store in database"""
+        """Fetch recent matches and store in database (optimized: only fetches new games)"""
         from datetime import datetime
+        from sqlalchemy import func
 
         # Season 26 start date: 2026-01-09 00:00:00 UTC
         SEASON_26_START = datetime(2026, 1, 9, 0, 0, 0)
 
         try:
-            match_ids = await self.get_match_ids_by_puuid(riot_account.puuid, start=0, count=max_matches)
+            # Optimization: Find the most recent game we have stored for this account
+            # This allows us to only fetch games AFTER this date from Riot API
+            most_recent_game = (
+                db.query(func.max(Game.game_date))
+                .filter(Game.riot_account_id == riot_account.id)
+                .scalar()
+            )
 
+            start_time = None
+            if most_recent_game:
+                # Add 1 second to avoid re-fetching the same game
+                start_time = int(most_recent_game.timestamp()) + 1
+                print(f"Incremental fetch for {riot_account.summoner_name}: "
+                      f"only games after {most_recent_game.isoformat()}")
+            else:
+                print(f"Full fetch for {riot_account.summoner_name}: no existing games found")
+
+            match_ids = await self.get_match_ids_by_puuid(
+                riot_account.puuid, start=0, count=max_matches, start_time=start_time
+            )
+
+            new_games_count = 0
             for match_id in match_ids:
                 # Check if match already exists
                 existing = db.query(Game).filter(Game.match_id == match_id).first()
@@ -293,8 +327,11 @@ class RiotAPIClient:
                     is_pentakill=is_pentakill,
                 )
                 db.add(game)
+                new_games_count += 1
 
             db.commit()
+            print(f"Refresh complete for {riot_account.summoner_name}: "
+                  f"{new_games_count} new games added (fetched {len(match_ids)} match IDs)")
         except Exception as e:
             db.rollback()
             raise e

@@ -16,6 +16,45 @@
             </div>
           </div>
 
+          <!-- Email for Calendar Invitations -->
+          <div class="mt-4 p-4 bg-gray-700 rounded-lg">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="text-gray-400 text-sm">Email (for calendar invitations):</span>
+                <span v-if="player.email && !editingEmail" class="text-white">{{ player.email }}</span>
+                <span v-else-if="!editingEmail" class="text-gray-500 text-sm italic">Not set</span>
+              </div>
+              <button
+                v-if="!editingEmail"
+                @click="startEditEmail"
+                class="text-blue-400 hover:text-blue-300 text-sm"
+              >
+                {{ player.email ? 'Edit' : 'Add Email' }}
+              </button>
+            </div>
+            <div v-if="editingEmail" class="mt-2 flex gap-2">
+              <input
+                v-model="emailInput"
+                type="email"
+                placeholder="player@gmail.com"
+                class="flex-1 bg-gray-600 border border-gray-500 rounded px-3 py-2 text-sm"
+              />
+              <button
+                @click="saveEmail"
+                :disabled="savingEmail"
+                class="bg-green-600 hover:bg-green-700 disabled:bg-green-800 px-3 py-1 rounded text-sm"
+              >
+                {{ savingEmail ? 'Saving...' : 'Save' }}
+              </button>
+              <button
+                @click="cancelEditEmail"
+                class="bg-gray-600 hover:bg-gray-500 px-3 py-1 rounded text-sm"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+
           <div class="mt-4">
             <h3 class="text-lg font-semibold mb-2">Riot Accounts</h3>
             <div class="space-y-2">
@@ -450,6 +489,36 @@ const manualRankData = ref({
 const refreshingAccounts = ref<Set<number>>(new Set())
 const isRefreshingAll = ref(false)
 
+// Email editing
+const editingEmail = ref(false)
+const emailInput = ref('')
+const savingEmail = ref(false)
+
+function startEditEmail() {
+  emailInput.value = player.value?.email || ''
+  editingEmail.value = true
+}
+
+function cancelEditEmail() {
+  editingEmail.value = false
+  emailInput.value = ''
+}
+
+async function saveEmail() {
+  if (!player.value) return
+  savingEmail.value = true
+  try {
+    await playersApi.update(player.value.id, { email: emailInput.value || null })
+    player.value.email = emailInput.value || undefined
+    editingEmail.value = false
+  } catch (error) {
+    console.error('Failed to save email:', error)
+    alert('Failed to save email')
+  } finally {
+    savingEmail.value = false
+  }
+}
+
 const tabs = [
   { id: 'overview', label: 'Overview' },
   { id: 'champions', label: 'Champions' },
@@ -581,7 +650,12 @@ async function refreshStats(riotAccountId: number, showSuccessAlert = true) {
   try {
     await statsApi.refreshStats(riotAccountId)
     if (player.value) {
-      const statsRes = await statsApi.getPlayerStats(player.value.id)
+      // Reload both player data (for rank info) and stats
+      const [playerRes, statsRes] = await Promise.all([
+        playersApi.get(player.value.id),
+        statsApi.getPlayerStats(player.value.id)
+      ])
+      player.value = playerRes.data
       stats.value = statsRes.data
     }
     if (showSuccessAlert) {

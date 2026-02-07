@@ -1,7 +1,7 @@
 <template>
   <nav class="bg-gray-800 border-b border-gray-700">
-    <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-      <div class="flex items-center gap-6">
+    <div class="w-full px-4 py-3 flex justify-between items-center">
+      <div class="flex items-center gap-4">
         <router-link to="/dashboard">
           <AppLogo size="sm" />
         </router-link>
@@ -12,12 +12,12 @@
           </button>
         </div>
       </div>
-      <div class="flex items-center gap-4">
+      <div class="flex items-center gap-1">
         <!-- Players Dropdown -->
         <div class="relative" ref="dropdownRef">
           <button
             @click="togglePlayersDropdown"
-            class="flex items-center gap-2 text-gray-300 hover:text-white text-sm transition px-3 py-2 rounded hover:bg-gray-700"
+            class="flex items-center gap-2 text-gray-300 hover:text-white text-sm transition px-2 py-1 rounded hover:bg-gray-700"
           >
             <span>Players</span>
             <svg
@@ -62,7 +62,7 @@
         <!-- Drafts Link -->
         <router-link
           to="/drafts"
-          class="text-gray-300 hover:text-white text-sm transition px-3 py-2 rounded hover:bg-gray-700"
+          class="text-gray-300 hover:text-white text-sm transition px-2 py-1 rounded hover:bg-gray-700"
         >
           Drafts
         </router-link>
@@ -70,7 +70,7 @@
         <!-- Calendar Link -->
         <router-link
           to="/calendar"
-          class="text-gray-300 hover:text-white text-sm transition px-3 py-2 rounded hover:bg-gray-700"
+          class="text-gray-300 hover:text-white text-sm transition px-2 py-1 rounded hover:bg-gray-700"
         >
           Calendrier
         </router-link>
@@ -78,7 +78,7 @@
         <!-- Scrims Link -->
         <router-link
           to="/scrims"
-          class="text-gray-300 hover:text-white text-sm transition px-3 py-2 rounded hover:bg-gray-700"
+          class="text-gray-300 hover:text-white text-sm transition px-2 py-1 rounded hover:bg-gray-700"
         >
           Scrims
         </router-link>
@@ -86,15 +86,24 @@
         <!-- Tier List Link -->
         <router-link
           to="/tier-list"
-          class="text-gray-300 hover:text-white text-sm transition px-3 py-2 rounded hover:bg-gray-700"
+          class="text-gray-300 hover:text-white text-sm transition px-2 py-1 rounded hover:bg-gray-700"
         >
           Tier List
+        </router-link>
+
+        <!-- SoloQ Activity Link -->
+        <router-link
+          to="/soloq"
+          class="text-gray-300 hover:text-white text-sm transition px-2 py-1 rounded hover:bg-gray-700"
+          @click.prevent="goToSoloQ"
+        >
+          SoloQ
         </router-link>
 
         <!-- Analytics Link -->
         <router-link
           to="/analytics"
-          class="text-gray-300 hover:text-white text-sm transition px-3 py-2 rounded hover:bg-gray-700"
+          class="text-gray-300 hover:text-white text-sm transition px-2 py-1 rounded hover:bg-gray-700"
         >
           Analytics
         </router-link>
@@ -186,6 +195,22 @@ function handleClickOutside(event: MouseEvent) {
 function handleLogout() {
   authStore.logout()
   router.push('/')
+}
+
+function goToSoloQ() {
+  // Debug helper: force navigation and log click
+  try {
+    console.log('SoloQ link clicked')
+    const current = router.currentRoute.value?.path
+    if (current !== '/soloq') {
+      router.push('/soloq')
+    } else {
+      // push same route to trigger view update if needed
+      router.push({ path: '/soloq' })
+    }
+  } catch (err) {
+    console.error('Failed to navigate to SoloQ:', err)
+  }
 }
 
 onMounted(() => {

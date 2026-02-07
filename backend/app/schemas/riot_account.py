@@ -25,6 +25,7 @@ class RiotAccountResponse(RiotAccountBase):
     peak_tier: str | None = None
     peak_division: str | None = None
     peak_lp: int | None = None
+    last_refreshed_at: datetime | None = None
     created_at: datetime
 
     class Config:
@@ -34,7 +35,7 @@ class RiotAccountResponse(RiotAccountBase):
 class RankHistoryEntry(BaseModel):
     id: int
     tier: str
-    division: str
+    division: str | None = None  # None for Master/Grandmaster/Challenger
     lp: int
     wins: int
     losses: int

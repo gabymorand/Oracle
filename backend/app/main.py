@@ -4,6 +4,7 @@ from fastapi.responses import RedirectResponse, JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.routers import (
+    admin,
     auth,
     calendar,
     coaches,
@@ -59,6 +60,7 @@ app = FastAPI(
 app.add_middleware(CORSMiddlewareCustom)
 
 # Include routers
+app.include_router(admin.router)
 app.include_router(auth.router)
 app.include_router(players.router)
 app.include_router(coaches.router)

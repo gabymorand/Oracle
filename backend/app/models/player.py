@@ -25,6 +25,7 @@ class Player(Base):
     team_id = Column(Integer, ForeignKey("teams.id", ondelete="CASCADE"), nullable=False, index=True)
     summoner_name = Column(String, index=True, nullable=False)
     role = Column(String, nullable=False)
+    email = Column(String, nullable=True)  # Gmail for calendar invitations
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

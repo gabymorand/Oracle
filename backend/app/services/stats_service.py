@@ -86,6 +86,8 @@ def get_lane_stats(db: Session, team_id: int, lane: str) -> LaneStats | None:
 
 
 async def refresh_player_stats(db: Session, riot_account_id: int):
+    from datetime import datetime
+
     from fastapi import HTTPException
 
     riot_account = db.query(RiotAccount).filter(RiotAccount.id == riot_account_id).first()
@@ -103,6 +105,10 @@ async def refresh_player_stats(db: Session, riot_account_id: int):
         print("Fetching and storing matches...")
         await riot_client.fetch_and_store_matches(db, riot_account, max_matches=20)
         print("Matches fetched and stored successfully")
+
+        # Update last_refreshed_at timestamp
+        riot_account.last_refreshed_at = datetime.utcnow()
+        db.commit()
     except ValueError as e:
         error_msg = str(e)
         print(f"ValueError during stats refresh: {error_msg}")

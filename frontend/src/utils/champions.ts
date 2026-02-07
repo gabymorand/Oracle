@@ -73,6 +73,11 @@ export function getChampionIconUrl(championId: number): string {
   return `https://ddragon.leagueoflegends.com/cdn/14.24.1/img/champion/${champ.id}.png`
 }
 
+// Backwards-compatible alias used across the app
+export function getChampionIcon(championId: number): string {
+  return getChampionIconUrl(championId)
+}
+
 // Get all loaded champions
 export function getAllChampions(): Record<number, ChampionData> {
   return championCache.data

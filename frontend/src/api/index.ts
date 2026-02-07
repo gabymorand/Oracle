@@ -25,8 +25,31 @@ import type {
   ScrimHistoryItem,
   ScrimManagementDashboard,
   DraftSeriesWithGames,
+  AdminDashboard,
+  AdminTeamDetails,
+  AdminTeamStats,
+  TeamActivityResponse,
 } from '@/types'
 import apiClient from './client'
+import axios from 'axios'
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+
+// Separate client for admin (uses admin_token)
+const adminClient = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+})
+
+adminClient.interceptors.request.use((config) => {
+  const token = localStorage.getItem('admin_token')
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
+  return config
+})
 
 export const authApi = {
   validateCode: (code: string, role: string) =>
@@ -91,7 +114,16 @@ export const statsApi = {
   getLaneStats: (lane: string) => apiClient.get<LaneStats>(`/api/v1/stats/lane/${lane}`),
   refreshStats: (riotAccountId: number) =>
     apiClient.post(`/api/v1/stats/refresh/${riotAccountId}`),
+  refreshAllStats: () =>
+    apiClient.post<{
+      message: string
+      refreshed: number
+      failed: number
+      results: Array<{ account: string; status: string; error?: string }>
+    }>('/api/v1/stats/refresh-all'),
   getTeamHighlights: () => apiClient.get<TeamHighlights>(`/api/v1/stats/team/highlights`),
+  getTeamActivity: (weekOffset = 0) =>
+    apiClient.get<TeamActivityResponse>(`/api/v1/stats/activity?week_offset=${weekOffset}`),
 }
 
 export const gamesApi = {
@@ -143,6 +175,15 @@ export const calendarApi = {
   // Scrims
   getScrims: (limit = 50) =>
     apiClient.get<CalendarEventWithSeries[]>(`/api/v1/calendar/scrims?limit=${limit}`),
+
+  // Calendar Invitations
+  getSmtpStatus: () =>
+    apiClient.get<{ configured: boolean }>('/api/v1/calendar/smtp-status'),
+  sendInvitation: (eventId: number, playerIds?: number[]) =>
+    apiClient.post<{ sent_to: string[]; failed: string[]; smtp_configured: boolean }>(
+      `/api/v1/calendar/events/${eventId}/send-invitation`,
+      { player_ids: playerIds || null }
+    ),
 }
 
 export const tierListApi = {
@@ -242,4 +283,30 @@ export const scrimManagementApi = {
     apiClient.patch<ScoutedPlayer>(`/api/v1/scrim-management/scouted-players/${id}`, data),
   deleteScoutedPlayer: (id: number) =>
     apiClient.delete(`/api/v1/scrim-management/scouted-players/${id}`),
+}
+
+export const adminApi = {
+  login: (code: string) =>
+    adminClient.post<{ access_token: string }>('/api/v1/admin/login', { code }),
+
+  getDashboard: () =>
+    adminClient.get<AdminDashboard>('/api/v1/admin/dashboard'),
+
+  getTeamDetails: (teamId: number) =>
+    adminClient.get<AdminTeamDetails>(`/api/v1/admin/teams/${teamId}`),
+
+  createTeam: (data: { name: string; access_code: string }) =>
+    adminClient.post<AdminTeamStats>('/api/v1/admin/teams', data),
+
+  updateTeam: (teamId: number, data: { name?: string; access_code?: string }) =>
+    adminClient.patch<AdminTeamDetails>(`/api/v1/admin/teams/${teamId}`, data),
+
+  deleteTeam: (teamId: number) =>
+    adminClient.delete(`/api/v1/admin/teams/${teamId}`),
+
+  deletePlayer: (playerId: number) =>
+    adminClient.delete(`/api/v1/admin/players/${playerId}`),
+
+  deleteCoach: (coachId: number) =>
+    adminClient.delete(`/api/v1/admin/coaches/${coachId}`),
 }

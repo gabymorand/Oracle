@@ -30,6 +30,12 @@ services:
       RIOT_API_CACHE_TTL: ${RIOT_API_CACHE_TTL:-3600}
       ACCESS_CODE: ${ACCESS_CODE:-oracle2026}
       JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-}
+      SMTP_FROM_NAME: ${SMTP_FROM_NAME:-Oracle Coaching}
     ports:
       - "8000:8000"
     depends_on:
