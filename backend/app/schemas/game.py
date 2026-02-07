@@ -28,3 +28,62 @@ class GameResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# --- Match Detail schemas for popup ---
+
+
+class MatchParticipant(BaseModel):
+    """A single participant in a match"""
+
+    puuid: str
+    summoner_name: str
+    tag_line: str
+    champion_id: int
+    champion_name: str
+    team_id: int  # 100 = blue, 200 = red
+    team_position: str  # TOP, JUNGLE, MIDDLE, BOTTOM, UTILITY
+    kills: int
+    deaths: int
+    assists: int
+    kda: float
+    cs: int
+    cs_per_min: float
+    vision_score: int
+    gold_earned: int
+    damage_dealt: int
+    damage_taken: int
+    summoner_spell1: int
+    summoner_spell2: int
+    items: list[int]  # 7 item slots (including trinket)
+    win: bool
+    is_our_player: bool  # True if this is a player from our team
+    # Rank info (only populated for our players)
+    rank_tier: str | None = None
+    rank_division: str | None = None
+    rank_lp: int | None = None
+
+
+class MatchTeam(BaseModel):
+    """A team in a match"""
+
+    team_id: int
+    win: bool
+    bans: list[int]  # Champion IDs banned
+    participants: list[MatchParticipant]
+    total_kills: int
+    total_gold: int
+    total_damage: int
+
+
+class MatchDetailResponse(BaseModel):
+    """Full match detail response"""
+
+    match_id: str
+    game_date: datetime
+    game_duration: int  # seconds
+    game_duration_formatted: str  # "26:15"
+    queue_id: int
+    queue_name: str
+    blue_team: MatchTeam
+    red_team: MatchTeam

@@ -3,11 +3,22 @@ import { ref, computed, onMounted } from 'vue'
 import { statsApi } from '@/api'
 import type { TeamActivityResponse, PlayerActivitySummary, ActivityGame } from '@/types'
 import { getChampionIcon, getChampionName } from '@/utils/champions'
+import AppNavbar from '@/components/AppNavbar.vue'
+import GameDetailModal from '@/components/GameDetailModal.vue'
 
 const loading = ref(false)
 const refreshing = ref(false)
 const activityData = ref<TeamActivityResponse | null>(null)
 const weekOffset = ref(0)
+const selectedGameId = ref<number | null>(null)
+
+function openGameDetail(gameId: number) {
+  selectedGameId.value = gameId
+}
+
+function closeGameDetail() {
+  selectedGameId.value = null
+}
 
 // Days of the week (Monday to Sunday)
 const dayNames = ['LUN.', 'MAR.', 'MER.', 'JEU.', 'VEN.', 'SAM.', 'DIM.']
@@ -158,6 +169,7 @@ onMounted(loadActivity)
 </script>
 
 <template>
+  <AppNavbar :show-back-button="true" />
   <div class="min-h-screen bg-gray-900 text-white p-6">
     <!-- Header -->
     <div class="flex items-center justify-between mb-6">
@@ -332,7 +344,8 @@ onMounted(loadActivity)
                 <div
                   v-for="game in getGamesForDay(player, day.dateKey)"
                   :key="game.id"
-                  class="bg-gray-800 rounded-lg p-2 border border-gray-700 hover:border-gray-600 transition"
+                  class="bg-gray-800 rounded-lg p-2 border border-gray-700 hover:border-gray-500 transition cursor-pointer"
+                  @click="openGameDetail(game.id)"
                 >
                   <!-- Time -->
                   <div class="text-xs text-gray-400 mb-1">
@@ -389,5 +402,8 @@ onMounted(loadActivity)
     <div v-if="!loading && activityData && activityData.players.length === 0" class="text-center py-20 text-gray-400">
       <p>Aucun joueur trouve dans l'equipe</p>
     </div>
+
+    <!-- Game Detail Modal -->
+    <GameDetailModal :game-id="selectedGameId" @close="closeGameDetail" />
   </div>
 </template>

@@ -3,6 +3,10 @@ import { createPinia } from 'pinia'
 import router from './router'
 import App from './App.vue'
 import './assets/main.css'
+import { loadChampionData } from './utils/champions'
+
+// Load champion data (and DDragon version) early
+loadChampionData()
 
 const app = createApp(App)
 

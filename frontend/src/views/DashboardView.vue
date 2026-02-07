@@ -71,9 +71,15 @@
               <!-- Player Content -->
               <div v-if="getPlayerByRole(role)" class="pt-2">
                 <div class="flex items-center gap-3 mb-3">
-                  <!-- Role Icon -->
+                  <!-- Rank Icon (or role fallback if unranked) -->
                   <div :class="['w-12 h-12 rounded-lg flex items-center justify-center', getRoleBgColor(role) + '/20']">
-                    <span class="text-2xl">{{ getRoleEmoji(role) }}</span>
+                    <img
+                      v-if="getPlayerRankIcon(getPlayerByRole(role)!)"
+                      :src="getPlayerRankIcon(getPlayerByRole(role)!)"
+                      :alt="getMainAccountRank(getPlayerByRole(role)!)"
+                      class="w-10 h-10"
+                    />
+                    <span v-else class="text-2xl">{{ getRoleEmoji(role) }}</span>
                   </div>
                   <div class="flex-1 min-w-0">
                     <div class="font-bold text-lg truncate">{{ getPlayerByRole(role)!.summoner_name }}</div>
@@ -372,6 +378,7 @@ import { useAuthStore } from '@/stores/auth'
 import { playersApi, statsApi, coachesApi } from '@/api'
 import type { Player, PlayerStats, TeamHighlights, Coach } from '@/types'
 import AppNavbar from '@/components/AppNavbar.vue'
+import { getRankEmblemIcon } from '@/utils/champions'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -403,6 +410,12 @@ function getMainAccountRank(player: Player): string {
   const mainAccount = player.riot_accounts.find((a) => a.is_main) || player.riot_accounts[0]
   if (!mainAccount || !mainAccount.rank_tier) return 'Unranked'
   return `${mainAccount.rank_tier} ${mainAccount.rank_division || ''} ${mainAccount.lp ? `(${mainAccount.lp} LP)` : ''}`.trim()
+}
+
+function getPlayerRankIcon(player: Player): string {
+  const mainAccount = player.riot_accounts.find((a) => a.is_main) || player.riot_accounts[0]
+  if (!mainAccount || !mainAccount.rank_tier) return ''
+  return getRankEmblemIcon(mainAccount.rank_tier)
 }
 
 function getRoleBgColor(role: string): string {

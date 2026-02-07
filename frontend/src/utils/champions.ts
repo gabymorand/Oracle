@@ -10,11 +10,13 @@ interface ChampionData {
 interface ChampionCache {
   data: Record<number, ChampionData>
   loaded: boolean
+  version: string
 }
 
 const championCache: ChampionCache = {
   data: {},
-  loaded: false
+  loaded: false,
+  version: '15.3.1' // Default fallback, will be updated on load
 }
 
 // Get latest DDragon version
@@ -25,8 +27,13 @@ async function getLatestVersion(): Promise<string> {
     return versions[0] // Latest version
   } catch (error) {
     console.error('Failed to fetch DDragon version:', error)
-    return '14.24.1' // Fallback version
+    return '15.3.1' // Fallback version for 2026
   }
+}
+
+// Get the current DDragon version
+export function getDDragonVersion(): string {
+  return championCache.version
 }
 
 // Load all champion data from DataDragon
@@ -35,6 +42,8 @@ export async function loadChampionData(): Promise<void> {
 
   try {
     const version = await getLatestVersion()
+    championCache.version = version // Store version for use in icon functions
+
     const response = await fetch(
       `https://ddragon.leagueoflegends.com/cdn/${version}/data/en_US/champion.json`
     )
@@ -51,7 +60,7 @@ export async function loadChampionData(): Promise<void> {
     }
 
     championCache.loaded = true
-    console.log('Champion data loaded:', Object.keys(championCache.data).length, 'champions')
+    console.log(`Champion data loaded: ${Object.keys(championCache.data).length} champions (DDragon v${version})`)
   } catch (error) {
     console.error('Failed to load champion data:', error)
   }
@@ -69,8 +78,8 @@ export function getChampionIconUrl(championId: number): string {
   if (!champ) {
     return `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/${championId}.png`
   }
-  // Use DDragon for icon
-  return `https://ddragon.leagueoflegends.com/cdn/14.24.1/img/champion/${champ.id}.png`
+  // Use DDragon for icon with cached version
+  return `https://ddragon.leagueoflegends.com/cdn/${championCache.version}/img/champion/${champ.id}.png`
 }
 
 // Backwards-compatible alias used across the app
@@ -176,4 +185,55 @@ export function searchChampions(query: string, limit = 10): Array<{ id: number; 
     .sort((a, b) => b.score - a.score)
     .slice(0, limit)
     .map(({ id, name }) => ({ id, name }))
+}
+
+// Summoner spell icon URL
+export function getSummonerSpellIcon(spellId: number): string {
+  // Summoner spell name mapping (complete list)
+  const spellNames: Record<number, string> = {
+    1: 'SummonerBoost', // Cleanse
+    3: 'SummonerExhaust',
+    4: 'SummonerFlash',
+    6: 'SummonerHaste', // Ghost
+    7: 'SummonerHeal',
+    11: 'SummonerSmite',
+    12: 'SummonerTeleport',
+    13: 'SummonerMana', // Clarity
+    14: 'SummonerDot', // Ignite
+    21: 'SummonerBarrier',
+    30: 'SummonerPoroRecall', // To the King (Poro King)
+    31: 'SummonerPoroThrow', // Poro Toss
+    32: 'SummonerSnowball', // Mark (ARAM)
+    39: 'SummonerSnowURFSnowball_Mark', // URF Mark
+    54: 'Summoner_UltBookPlaceholder', // Placeholder
+    55: 'Summoner_UltBookSmitePlaceholder', // Placeholder
+  }
+  const spellName = spellNames[spellId]
+  if (!spellName) {
+    // Fallback: use Community Dragon for unknown spells
+    return `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/data/spells/icons2d/summoner_${spellId}.png`
+  }
+  return `https://ddragon.leagueoflegends.com/cdn/${championCache.version}/img/spell/${spellName}.png`
+}
+
+// Item icon URL
+export function getItemIcon(itemId: number): string {
+  if (!itemId || itemId === 0) {
+    return ''
+  }
+  return `https://ddragon.leagueoflegends.com/cdn/${championCache.version}/img/item/${itemId}.png`
+}
+
+// Rank emblem icon URL
+export function getRankEmblemIcon(tier: string | null | undefined): string {
+  if (!tier) {
+    return ''
+  }
+  // Normalize tier name (uppercase)
+  const normalizedTier = tier.toUpperCase()
+
+  // Use Community Dragon for rank emblems (they have nice versions)
+  // Format: iron, bronze, silver, gold, platinum, emerald, diamond, master, grandmaster, challenger
+  const tierLower = normalizedTier.toLowerCase()
+  return `https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/images/ranked-mini-crests/${tierLower}.svg`
 }

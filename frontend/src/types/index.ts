@@ -443,3 +443,54 @@ export interface TeamActivityResponse {
   players: PlayerActivitySummary[]
   last_updated: string
 }
+
+// Match Detail Types (for game popup)
+
+export interface MatchParticipant {
+  puuid: string
+  summoner_name: string
+  tag_line: string
+  champion_id: number
+  champion_name: string
+  team_id: number
+  team_position: string
+  kills: number
+  deaths: number
+  assists: number
+  kda: number
+  cs: number
+  cs_per_min: number
+  vision_score: number
+  gold_earned: number
+  damage_dealt: number
+  damage_taken: number
+  summoner_spell1: number
+  summoner_spell2: number
+  items: number[]
+  win: boolean
+  is_our_player: boolean
+  rank_tier?: string
+  rank_division?: string
+  rank_lp?: number
+}
+
+export interface MatchTeam {
+  team_id: number
+  win: boolean
+  bans: number[]
+  participants: MatchParticipant[]
+  total_kills: number
+  total_gold: number
+  total_damage: number
+}
+
+export interface MatchDetailResponse {
+  match_id: string
+  game_date: string
+  game_duration: number
+  game_duration_formatted: string
+  queue_id: number
+  queue_name: string
+  blue_team: MatchTeam
+  red_team: MatchTeam
+}

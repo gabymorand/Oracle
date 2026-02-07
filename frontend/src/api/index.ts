@@ -29,6 +29,7 @@ import type {
   AdminTeamDetails,
   AdminTeamStats,
   TeamActivityResponse,
+  MatchDetailResponse,
 } from '@/types'
 import apiClient from './client'
 import axios from 'axios'
@@ -130,6 +131,8 @@ export const gamesApi = {
   getPentakills: () => apiClient.get<Game[]>('/api/v1/games/pentakills'),
   updateGameTag: (gameId: number, data: { game_type?: string; is_pentakill?: boolean }) =>
     apiClient.patch<Game>(`/api/v1/games/${gameId}/tag`, data),
+  getMatchDetails: (gameId: number) =>
+    apiClient.get<MatchDetailResponse>(`/api/v1/games/${gameId}/details`),
 }
 
 export const calendarApi = {
